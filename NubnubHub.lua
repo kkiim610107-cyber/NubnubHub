@@ -20,7 +20,7 @@ local showTracer = false
 
 local rainbowEnabled = false
 local rainbowTime = 0
-local rainbowSpeed = 0.0005
+local rainbowSpeed = 0.00025
 
 local function getColor()
 	if rainbowEnabled then
@@ -82,8 +82,8 @@ MainTab:CreateButton({
 	end
 })
 MainTab:CreateInput({
-	Name = "닉네임 텔레포트",
-	PlaceholderText = "앞부분 입력",
+	Name = "TP",
+	PlaceholderText = "닉네임(앞부분)",
 	RemoveTextAfterFocusLost = false,
 	Callback = function(text)
 		text = string.lower(text)
@@ -114,7 +114,7 @@ MainTab:CreateInput({
 })
 MainTab:CreateSlider({
 	Name = "스피드",
-	Range = {0,150},
+	Range = {0,500},
 	Increment = 1,
 	CurrentValue = speedValue,
 	Callback = function(v)
@@ -126,7 +126,7 @@ MainTab:CreateSlider({
 })
 MainTab:CreateSlider({
 	Name = "점프",
-	Range = {0,300},
+	Range = {0,500},
 	Increment = 1,
 	CurrentValue = jumpValue,
 	Callback = function(v)
@@ -138,7 +138,7 @@ MainTab:CreateSlider({
 })
 MainTab:CreateSlider({
 	Name = "스핀",
-	Range = {0,150},
+	Range = {0,10000},
 	Increment = 1,
 	CurrentValue = 0,
 	Callback = function(v)
@@ -165,7 +165,7 @@ local function addESP(player)
 	
 	local highlight = Instance.new("Highlight")
 	highlight.Name = "ESP"
-	highlight.FillTransparency = 0.5
+	highlight.FillTransparency = 0.35
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.Parent = char
 	

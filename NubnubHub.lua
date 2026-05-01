@@ -10,6 +10,8 @@ local jumpValue = 50
 local spinSpeed = 0
 local spinning = false
 
+local infiniteJump = false -- 🔥 추가
+
 local espEnabled = false
 local showName = false
 local showBackpack = false
@@ -30,17 +32,15 @@ local function getColor()
 	end
 end
 
--- 스탯 적용 (핵심 수정됨)
+-- 스탯 적용
 local function applyStats(char)
 	local hum = char:FindFirstChild("Humanoid")
 	if hum then
 		hum.WalkSpeed = speedValue
 		
-		-- JumpPower 방식
 		hum.UseJumpPower = true
 		hum.JumpPower = jumpValue
 		
-		-- 혹시 막힌 게임 대비
 		task.defer(function()
 			if hum and hum.Parent then
 				hum.JumpHeight = jumpValue / 2
@@ -68,7 +68,7 @@ local function stopSpin()
 	spinning = false
 end
 
--- 캐릭터 리스폰 시 적용
+-- 캐릭터 리스폰
 LocalPlayer.CharacterAdded:Connect(function(char)
 	task.wait(1)
 	applyStats(char)
@@ -78,7 +78,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 	end
 end)
 
--- 🔥 지속 적용 (서버 덮어쓰기 대응)
+-- 지속 적용
 task.spawn(function()
 	while true do
 		task.wait(0.2)
@@ -88,11 +88,24 @@ task.spawn(function()
 	end
 end)
 
--- 🔥 점프 보조 (확실하게 뜨게)
+-- 🔥 점프 (무한 점프 토글 포함)
 UIS.JumpRequest:Connect(function()
 	local char = LocalPlayer.Character
-	if char and char:FindFirstChild("HumanoidRootPart") then
-		char.HumanoidRootPart.Velocity = Vector3.new(0, jumpValue * 2, 0)
+	if not char then return end
+	
+	local hum = char:FindFirstChild("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	
+	if hum and hrp then
+		if infiniteJump then
+			-- 무한 점프
+			hrp.Velocity = Vector3.new(0, jumpValue * 2, 0)
+		else
+			-- 일반 점프
+			if hum.FloorMaterial ~= Enum.Material.Air then
+				hrp.Velocity = Vector3.new(0, jumpValue * 2, 0)
+			end
+		end
 	end
 end)
 
@@ -178,6 +191,15 @@ MainTab:CreateSlider({
 		end
 	end
 })
+
+-- 🔥 무한 점프 토글
+MainTab:CreateToggle({
+	Name = "무한 점프",
+	CurrentValue = false,
+	Callback = function(Value)
+		infiniteJump = Value
+	end
+})
 MainTab:CreateSlider({
 	Name = "스핀",
 	Range = {0,10000},
@@ -195,73 +217,6 @@ MainTab:CreateSlider({
 		end
 	end
 })
-
-MainTab:CreateToggle({
-	Name = "FLY",
-	CurrentValue = false,
-	Callback = function(Value)
-		local char = LocalPlayer.Character
-		if not char then return end
-		
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end
-		
-		if Value then
-			local bv = Instance.new("BodyVelocity")
-			bv.Name = "FlyVelocity"
-			bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-			bv.Velocity = Vector3.zero
-			bv.Parent = hrp
-			
-			local bg = Instance.new("BodyGyro")
-			bg.Name = "FlyGyro"
-			bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
-			bg.CFrame = hrp.CFrame
-			bg.Parent = hrp
-			
-			task.spawn(function()
-				while bv.Parent do
-					task.wait()
-					local camCF = camera.CFrame
-					bv.Velocity = camCF.LookVector * speedValue
-					bg.CFrame = camCF
-				end
-			end)
-			
-		else
-			if hrp:FindFirstChild("FlyVelocity") then
-				hrp.FlyVelocity:Destroy()
-			end
-			if hrp:FindFirstChild("FlyGyro") then
-				hrp.FlyGyro:Destroy()
-			end
-		end
-	end
-})
-
-MainTab:CreateToggle({
-	Name = "NOCLIP",
-	CurrentValue = false,
-	Callback = function(Value)
-		local function setCollision(state)
-			local char = LocalPlayer.Character
-			if not char then return end
-			
-			for _,v in ipairs(char:GetDescendants()) do
-				if v:IsA("BasePart") then
-					v.CanCollide = state
-				end
-			end
-		end
-		
-		if Value then
-			setCollision(false)
-		else
-			setCollision(true)
-		end
-	end
-})
-
 
 local function addESP(player)
 	if player == LocalPlayer then return end

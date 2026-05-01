@@ -1,15 +1,14 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
+local UIS = game:GetService("UserInputService")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
 
 local speedValue = 16
 local jumpValue = 50
 local spinSpeed = 0
 local spinning = false
-
 
 local espEnabled = false
 local showName = false
@@ -17,11 +16,11 @@ local showBackpack = false
 local showTeam = false
 local showTracer = false
 
-
 local rainbowEnabled = false
 local rainbowTime = 0
 local rainbowSpeed = 0.00025
 
+-- 색상
 local function getColor()
 	if rainbowEnabled then
 		rainbowTime += rainbowSpeed
@@ -30,13 +29,27 @@ local function getColor()
 		return Color3.fromRGB(0,255,0)
 	end
 end
+
+-- 스탯 적용 (핵심 수정됨)
 local function applyStats(char)
 	local hum = char:FindFirstChild("Humanoid")
 	if hum then
 		hum.WalkSpeed = speedValue
+		
+		-- JumpPower 방식
+		hum.UseJumpPower = true
 		hum.JumpPower = jumpValue
+		
+		-- 혹시 막힌 게임 대비
+		task.defer(function()
+			if hum and hum.Parent then
+				hum.JumpHeight = jumpValue / 2
+			end
+		end)
 	end
 end
+
+-- 스핀
 local function startSpin(char)
 	if spinning then return end
 	spinning = true
@@ -54,6 +67,8 @@ end
 local function stopSpin()
 	spinning = false
 end
+
+-- 캐릭터 리스폰 시 적용
 LocalPlayer.CharacterAdded:Connect(function(char)
 	task.wait(1)
 	applyStats(char)
@@ -62,6 +77,26 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 		startSpin(char)
 	end
 end)
+
+-- 🔥 지속 적용 (서버 덮어쓰기 대응)
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		if LocalPlayer.Character then
+			applyStats(LocalPlayer.Character)
+		end
+	end
+end)
+
+-- 🔥 점프 보조 (확실하게 뜨게)
+UIS.JumpRequest:Connect(function()
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		char.HumanoidRootPart.Velocity = Vector3.new(0, jumpValue * 2, 0)
+	end
+end)
+
+-- UI
 local Window = Rayfield:CreateWindow({
 	Name = "눕눕 허브",
 	ToggleUIKeybind = "K"
@@ -75,21 +110,24 @@ ESPTab:CreateSection("ESP 옵션")
 
 local HubTab = Window:CreateTab("스크립트 허브", nil)
 HubTab:CreateSection("스크립트 허브들")
+
+-- 버튼
 MainTab:CreateButton({
 	Name = "인피니티 야드 실행",
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
 	end
 })
+
+-- TP
 MainTab:CreateInput({
 	Name = "TP",
 	PlaceholderText = "닉네임(앞부분)",
 	RemoveTextAfterFocusLost = false,
 	Callback = function(text)
 		text = string.lower(text)
-		
 		local found = {}
-		
+
 		for _,p in ipairs(Players:GetPlayers()) do
 			if p ~= LocalPlayer then
 				if string.find(string.lower(p.Name), text, 1, true) == 1 then
@@ -97,7 +135,7 @@ MainTab:CreateInput({
 				end
 			end
 		end
-		
+
 		if #found == 1 then
 			local target = found[1]
 			if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
@@ -112,6 +150,8 @@ MainTab:CreateInput({
 		end
 	end
 })
+
+-- 스피드
 MainTab:CreateSlider({
 	Name = "스피드",
 	Range = {0,500},
@@ -124,6 +164,8 @@ MainTab:CreateSlider({
 		end
 	end
 })
+
+-- 점프
 MainTab:CreateSlider({
 	Name = "점프",
 	Range = {0,500},
@@ -153,6 +195,74 @@ MainTab:CreateSlider({
 		end
 	end
 })
+
+MainTab:CreateToggle({
+	Name = "FLY",
+	CurrentValue = false,
+	Callback = function(Value)
+		local char = LocalPlayer.Character
+		if not char then return end
+		
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+		
+		if Value then
+			local bv = Instance.new("BodyVelocity")
+			bv.Name = "FlyVelocity"
+			bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+			bv.Velocity = Vector3.zero
+			bv.Parent = hrp
+			
+			local bg = Instance.new("BodyGyro")
+			bg.Name = "FlyGyro"
+			bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
+			bg.CFrame = hrp.CFrame
+			bg.Parent = hrp
+			
+			task.spawn(function()
+				while bv.Parent do
+					task.wait()
+					local camCF = camera.CFrame
+					bv.Velocity = camCF.LookVector * speedValue
+					bg.CFrame = camCF
+				end
+			end)
+			
+		else
+			if hrp:FindFirstChild("FlyVelocity") then
+				hrp.FlyVelocity:Destroy()
+			end
+			if hrp:FindFirstChild("FlyGyro") then
+				hrp.FlyGyro:Destroy()
+			end
+		end
+	end
+})
+
+MainTab:CreateToggle({
+	Name = "NOCLIP",
+	CurrentValue = false,
+	Callback = function(Value)
+		local function setCollision(state)
+			local char = LocalPlayer.Character
+			if not char then return end
+			
+			for _,v in ipairs(char:GetDescendants()) do
+				if v:IsA("BasePart") then
+					v.CanCollide = state
+				end
+			end
+		end
+		
+		if Value then
+			setCollision(false)
+		else
+			setCollision(true)
+		end
+	end
+})
+
+
 local function addESP(player)
 	if player == LocalPlayer then return end
 	if not player.Character then return end

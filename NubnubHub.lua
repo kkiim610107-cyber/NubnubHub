@@ -83,24 +83,15 @@ local function stopSpin()
 	spinning = false
 end
 
-pcall(function()
-	PhysicsService:RegisterCollisionGroup(NOCLIP_GROUP)
-end)
-pcall(function()
-	PhysicsService:CollisionGroupSetCollidable(NOCLIP_GROUP, DEFAULT_GROUP, false)
-	PhysicsService:CollisionGroupSetCollidable(NOCLIP_GROUP, NOCLIP_GROUP, false)
-end)
-
 local function setPartNoClip(part)
 	if part:IsA("BasePart") then
 		part.CanCollide = false
-		part.CollisionGroup = NOCLIP_GROUP
 	end
 end
 
 local function setPartDefaultCollision(part)
 	if part:IsA("BasePart") then
-		part.CollisionGroup = DEFAULT_GROUP
+		part.CanCollide = true
 	end
 end
 
@@ -131,16 +122,21 @@ local function startNoclip()
 	end
 
 	noclipConn = RunService.Stepped:Connect(function()
-		if not noclipEnabled then
-			return
-		end
-		local c = LocalPlayer.Character
-		if not c then
-			return
-		end
-		applyCharacterNoClip(c)
-	end)
+	if not noclipEnabled then
+		return
+	end
 
+	local c = LocalPlayer.Character
+	if not c then
+		return
+	end
+
+	for _, v in ipairs(c:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.CanCollide = false
+		end
+	end
+end)
 	if noclipDescConn then
 		noclipDescConn:Disconnect()
 		noclipDescConn = nil

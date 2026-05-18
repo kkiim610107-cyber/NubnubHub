@@ -23,12 +23,6 @@ local noclipEnabled = false
 local noclipConn = nil
 local noclipDescConn = nil
 
-local wallPhaseEnabled = false
-local wallPhaseConn = nil
-local wallPhaseDistance = 6
-local wallPhaseCooldown = 0.12
-local lastPhase = 0
-
 local flyEnabled = false
 local flySpeed = 60
 
@@ -52,7 +46,11 @@ local ESP_COLOR = Color3.fromRGB(0, 255, 0)
 
 local visualState = {}
 
-local function getColor()
+local function getColor(player)
+	if player and player.Team and player.Team.TeamColor then
+		return player.Team.TeamColor.Color
+	end
+
 	return ESP_COLOR
 end
 
@@ -168,47 +166,6 @@ local function stopNoclip()
 	local char = LocalPlayer.Character
 	if char then
 		restoreCharacterCollision(char)
-	end
-end
-
-local function startWallPhase()
-	if wallPhaseConn then
-		return
-	end
-
-	wallPhaseConn = RunService.Heartbeat:Connect(function()
-		if not wallPhaseEnabled then return end
-
-		local char = LocalPlayer.Character
-		if not char then return end
-
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if not hrp or not hum then return end
-		if hum.MoveDirection.Magnitude < 0.1 then return end
-
-		local now = os.clock()
-		if now - lastPhase < wallPhaseCooldown then return end
-
-		local dir = hum.MoveDirection.Unit
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Blacklist
-		params.FilterDescendantsInstances = {char}
-		params.IgnoreWater = true
-
-		local hit = workspace:Raycast(hrp.Position, dir * wallPhaseDistance, params)
-		if hit then
-			local targetPos = hit.Position + dir * 3
-			hrp.CFrame = CFrame.new(targetPos, targetPos + hrp.CFrame.LookVector)
-			lastPhase = now
-		end
-	end)
-end
-
-local function stopWallPhase()
-	if wallPhaseConn then
-		wallPhaseConn:Disconnect()
-		wallPhaseConn = nil
 	end
 end
 
@@ -330,9 +287,9 @@ local function createVisual(player)
 	if player == LocalPlayer then return end
 	if not player.Character then return end
 	if not wantsAnyEspVisual() then
-		clearVisual(player)
-		return
-	end
+	clearVisual(player)
+	return
+end
 
 	local char = player.Character
 	local head = char:FindFirstChild("Head")
@@ -341,16 +298,22 @@ local function createVisual(player)
 
 	clearVisual(player)
 
-	local state = {}
-	visualState[player] = state
+local state = visualState[player]
+
+if state then
+	clearVisual(player)
+end
+
+state = {}
+visualState[player] = state
 
 	if espEnabled then
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "ESP"
 		highlight.FillTransparency = 0.35
 		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		highlight.FillColor = getColor()
-		highlight.OutlineColor = getColor()
+		highlight.FillColor = getColor(player)
+        highlight.OutlineColor = getColor(player)
 		highlight.Parent = char
 		state.highlight = highlight
 	end
@@ -382,7 +345,7 @@ local function createVisual(player)
 		local line = Drawing.new("Line")
 		line.Thickness = 2
 		line.Transparency = 1
-		line.Color = getColor()
+		line.Color = getColor(player)
 		line.Visible = false
 		state.line = line
 	end
@@ -401,7 +364,11 @@ local function createVisual(player)
 			return
 		end
 
-		local color = getColor()
+	local color = getColor(player)
+
+	if state.highlight then
+	state.highlight.Enabled = espEnabled
+end
 
 		if state.highlight then
 			state.highlight.FillColor = color
@@ -613,18 +580,6 @@ MainTab:CreateToggle({
 	end
 })
 
-MainTab:CreateToggle({
-	Name = "벽통과 보조",
-	CurrentValue = false,
-	Callback = function(v)
-		wallPhaseEnabled = v
-		if v then
-			startWallPhase()
-		else
-			stopWallPhase()
-		end
-	end
-})
 
 MainTab:CreateToggle({
 	Name = "플라이",

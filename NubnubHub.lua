@@ -472,21 +472,26 @@ UIS.JumpRequest:Connect(function()
 end)
 
 local Window = Rayfield:CreateWindow({
-	Name = "눕눕 허브",
-	ToggleUIKeybind = "K"
+   Name = "눕눕 허브",
+   Icon = 0, 
+   LoadingTitle = "로딩중이라고 병신아",
+   LoadingSubtitle = "by 눕눕",
+   ShowText = "눕눕허브", 
+
+   ToggleUIKeybind = "K"
 })
 
-local MainTab = Window:CreateTab("메인", nil)
+local MainTab = Window:CreateTab("메인", 4483362458)
 MainTab:CreateSection("메인 옵션")
 
-local ESPTab = Window:CreateTab("ESP", nil)
+local ESPTab = Window:CreateTab("ESP", 4483362458)
 ESPTab:CreateSection("ESP 옵션")
 
-local HubTab = Window:CreateTab("스크립트 허브", nil)
+local HubTab = Window:CreateTab("스크립트 허브", 4483362458)
 HubTab:CreateSection("스크립트 허브들")
 
-local UtilityTab = Window:CreateTab("유틸", nil)
-UtilityTab:CreateSection("안전 유틸리티")
+local UtilityTab = Window:CreateTab("유틸", 4483362458)
+UtilityTab:CreateSection("유틸리티")
 
 MainTab:CreateButton({
 	Name = "인피니티 야드 실행",
@@ -535,7 +540,7 @@ MainTab:CreateSlider({
 
 MainTab:CreateSlider({
 	Name = "점프",
-	Range = {25, 100},
+	Range = {0, 500},
 	Increment = 1,
 	CurrentValue = jumpValue,
 	Callback = function(v)
@@ -606,7 +611,7 @@ MainTab:CreateSlider({
 })
 
 ESPTab:CreateToggle({
-	Name = "ESP 하이라이트",
+	Name = "ESP",
 	CurrentValue = false,
 	Callback = function(v)
 		espEnabled = v
@@ -705,7 +710,7 @@ HubTab:CreateButton({
 })
 
 UtilityTab:CreateButton({
-	Name = "캐릭터 리스폰",
+	Name = "재설정",
 	Callback = function()
 		local char = LocalPlayer.Character
 		if char then

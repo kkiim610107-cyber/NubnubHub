@@ -1,720 +1,510 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local PhysicsService = game:GetService("PhysicsService")
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
 
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Window = Library:CreateWindow({
+    Title = '눕눕 에임핵',
+    Center = true,
+    AutoShow = true,
+})
 
-local speedValue = 16
-local jumpValue = 50
-local spinSpeed = 0
-local spinning = false
-local infiniteJump = false
-
-local espEnabled = false
-local showName = false
-local showBackpack = false
-local showTeam = false
-local showTracer = false
-
-local noclipEnabled = false
-local noclipConn = nil
-local noclipDescConn = nil
-
-local flyEnabled = false
-local flySpeed = 60
-
-local flyBV = nil
-local flyBG = nil
-local flyConn = nil
-local inputBeganConn = nil
-local inputEndedConn = nil
-local inputState = {
-	W = false,
-	A = false,
-	S = false,
-	D = false,
-	Space = false,
-	Ctrl = false
+local Tabs = {
+    Main = Window:AddTab('Main'),
+    ['UI Settings'] = Window:AddTab('UI Settings'),
 }
 
-local NOCLIP_GROUP = "NubNoClip"
-local DEFAULT_GROUP = "Default"
-local ESP_COLOR = Color3.fromRGB(0, 255, 0)
+local CombatGroup = Tabs.Main:AddLeftGroupbox('Aimbot')
+local VisualGroup = Tabs.Main:AddRightGroupbox('Visuals')
+local TrollingGroup = Tabs.Main:AddRightGroupbox('Trolling')
+local ESPGroup = Tabs.Main:AddRightGroupbox('ESP Settings')
 
-local visualState = {}
+-- ==================== SETTINGS ====================
+local AimSettings = {
+    Enabled = false,
+    TeamCheck = false,
+    WallCheck = false,
+    FOVEnabled = false,
+    AimPart = "Head",
+    Smoothness = 0.35,
+    FOV = 90,
+    ShowFOVCircle = false,
+    Triggerbot = false,
+    TriggerDelay = 0.12,
+    FOVColor = Color3.fromRGB(255, 255, 255),
+}
 
-local function getColor(player)
-	if player and player.Team and player.Team.TeamColor then
-		return player.Team.TeamColor.Color
-	end
+local TrollingSettings = { TeleportBehind = false, TeamCheck = false }
 
-	return ESP_COLOR
+local ESPSettings = {
+    Box = false, Name = false, HealthBar = false, Chams = false, Tracer = false,
+    TeamCheck = false,
+    BoxColor = Color3.fromRGB(255, 255, 255),
+    NameColor = Color3.fromRGB(255, 255, 255),
+    ChamsColor = Color3.fromRGB(255, 255, 255),
+    TracerColor = Color3.fromRGB(255, 255, 255),
+}
+
+-- ==================== UI ====================
+CombatGroup:AddToggle('AimbotToggle', { Text = 'Camera Aimbot', Default = false, Callback = function(v) AimSettings.Enabled = v end })
+CombatGroup:AddToggle('TeamCheckToggle', { Text = 'Aimbot Team Check', Default = false, Callback = function(v) AimSettings.TeamCheck = v end })
+CombatGroup:AddToggle('WallCheckToggle', { Text = 'Wall Check', Default = false, Callback = function(v) AimSettings.WallCheck = v end })
+CombatGroup:AddSlider('SmoothnessSlider', { Text = 'Smoothness', Default = 0.35, Min = 0.1, Max = 1.0, Rounding = 2, Callback = function(v) AimSettings.Smoothness = v end })
+CombatGroup:AddToggle('FOVEnabledToggle', { Text = 'Aimbot FOV Enabled', Default = false, Callback = function(v) AimSettings.FOVEnabled = v end })
+CombatGroup:AddSlider('FOVSlider', { Text = 'Aimbot FOV Size', Default = 90, Min = 30, Max = 800, Rounding = 0, Callback = function(v) AimSettings.FOV = v end })
+CombatGroup:AddLabel('Aimbot FOV Color'):AddColorPicker('FOVColorPicker', { Default = Color3.fromRGB(255, 255, 255), Callback = function(v) AimSettings.FOVColor = v end })
+CombatGroup:AddToggle('ShowFOVCircleToggle', { Text = 'Show FOV Circle', Default = false, Callback = function(v) AimSettings.ShowFOVCircle = v end })
+CombatGroup:AddDropdown('AimPartDropdown', { Text = 'Aim Part', Values = {'Head', 'Body', 'Legs'}, Default = 1, Callback = function(v) AimSettings.AimPart = v end })
+CombatGroup:AddToggle('TriggerbotToggle', { Text = 'Triggerbot (홀드)', Default = false, Callback = function(v) AimSettings.Triggerbot = v end })
+CombatGroup:AddSlider('TriggerDelaySlider', { Text = 'Trigger Delay (sec)', Default = 0.12, Min = 0.05, Max = 1.0, Rounding = 2, Callback = function(v) AimSettings.TriggerDelay = v end })
+
+VisualGroup:AddSlider('CameraFOVSlider', { Text = 'Camera FOV (Zoom)', Default = 70, Min = 70, Max = 120, Rounding = 0, Callback = function(v) workspace.CurrentCamera.FieldOfView = v end })
+
+TrollingGroup:AddToggle('TeleportBehindToggle', { Text = 'Teleport Behind Players', Default = false, Callback = function(v) TrollingSettings.TeleportBehind = v end })
+TrollingGroup:AddToggle('TrollingTeamCheckToggle', { Text = 'Trolling Team Check', Default = false, Callback = function(v) TrollingSettings.TeamCheck = v end })
+
+ESPGroup:AddToggle('BoxToggle', { Text = 'Box ESP', Default = false, Callback = function(v) ESPSettings.Box = v end })
+ESPGroup:AddToggle('NameToggle', { Text = 'Name ESP', Default = false, Callback = function(v) ESPSettings.Name = v end })
+ESPGroup:AddToggle('HealthBarToggle', { Text = 'Health Bar', Default = false, Callback = function(v) ESPSettings.HealthBar = v end })
+ESPGroup:AddToggle('ChamsToggle', { Text = 'Chams', Default = false, Callback = function(v) ESPSettings.Chams = v end })
+ESPGroup:AddToggle('TracerToggle', { Text = 'Tracer', Default = false, Callback = function(v) ESPSettings.Tracer = v end })
+ESPGroup:AddToggle('ESPTeamCheckToggle', { Text = 'ESP Team Check', Default = false, Callback = function(v) ESPSettings.TeamCheck = v end })
+
+ESPGroup:AddLabel('Box Color'):AddColorPicker('BoxColor', { Default = Color3.fromRGB(255, 255, 255), Callback = function(v) ESPSettings.BoxColor = v end })
+ESPGroup:AddLabel('Name Color'):AddColorPicker('NameColor', { Default = Color3.fromRGB(255, 255, 255), Callback = function(v) ESPSettings.NameColor = v end })
+ESPGroup:AddLabel('Chams Color'):AddColorPicker('ChamsColor', { Default = Color3.fromRGB(255, 255, 255), Callback = function(v) ESPSettings.ChamsColor = v end })
+ESPGroup:AddLabel('Tracer Color'):AddColorPicker('TracerColor', { Default = Color3.fromRGB(255, 255, 255), Callback = function(v) ESPSettings.TracerColor = v end })
+
+-- ==================== Services & Variables ====================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local ESPObjects = {}
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.7
+
+local TriggerbotHolding = false
+
+-- ==================== Humanization Variables ====================
+local CurrentAimTarget = nil          -- Aimbot 전용
+local CurrentTrollingTarget = nil     -- Teleport 전용
+
+local TargetAcquiredTime = 0
+local TrackingLossTime = 0
+local IsTrackingLost = false
+local HumanState = "idle"             -- idle, acquiring, tracking, hesitating, correcting
+
+local LastAimPos = nil
+local AimInertia = Vector3.new(0,0,0)
+
+-- Correction Phase
+local CorrectionPhase = 0             -- 0: none, 1: overshoot, 2: reverse, 3: stabilization
+local CorrectionStartTime = 0
+
+-- Micro Jitter
+local JitterTime = 0
+
+-- Teleport Variables
+local TeleportedThisCycle = {}
+local LastTargetChange = 0
+local TargetChangeInterval = 1.6
+
+-- ==================== Functions ====================
+local function IsSameTeam(plr)
+    if not plr.Team or not LocalPlayer.Team then return false end
+    return plr.Team == LocalPlayer.Team
 end
 
-local function applyStats(char)
-	local hum = char:FindFirstChild("Humanoid")
-	if hum then
-		hum.WalkSpeed = speedValue
-		hum.UseJumpPower = true
-		hum.JumpPower = jumpValue
-	end
+local function IsVisible(targetPart)
+    if not AimSettings.WallCheck then return true end
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin)
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.IgnoreWater = true
+    local result = workspace:Raycast(origin, direction, raycastParams)
+    return not (result and not result.Instance:IsDescendantOf(targetPart.Parent))
 end
 
-local function startSpin(char)
-	if spinning then
-		return
-	end
-	spinning = true
-	local hrp = char:WaitForChild("HumanoidRootPart")
-	task.spawn(function()
-		while spinning and hrp and hrp.Parent do
-			hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
-			task.wait()
-		end
-	end)
+local function GetAimPart(char)
+    if AimSettings.AimPart == "Head" then return char:FindFirstChild("Head")
+    elseif AimSettings.AimPart == "Body" then return char:FindFirstChild("UpperTorso") or char:FindFirstChild("HumanoidRootPart")
+    elseif AimSettings.AimPart == "Legs" then return char:FindFirstChild("LowerTorso") or char:FindFirstChild("LeftLeg") or char:FindFirstChild("RightLeg")
+    end
+    return char:FindFirstChild("Head")
 end
 
-local function stopSpin()
-	spinning = false
+local function GetClosestPlayer()
+    local closest, dist = nil, math.huge
+    local screenCenter = Camera.ViewportSize / 2
+    local useDistanceOnly = not AimSettings.FOVEnabled
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            if AimSettings.TeamCheck and IsSameTeam(plr) then continue end
+            local part = GetAimPart(plr.Character)
+            if part then
+                local distance = (part.Position - Camera.CFrame.Position).Magnitude
+                if useDistanceOnly then
+                    if distance < dist and IsVisible(part) then
+                        dist = distance
+                        closest = plr
+                    end
+                else
+                    local vp, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    if onScreen then
+                        local screenDist = (Vector2.new(vp.X, vp.Y) - screenCenter).Magnitude
+                        if screenDist <= AimSettings.FOV and IsVisible(part) and screenDist < dist then
+                            dist = screenDist
+                            closest = plr
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
 end
 
-pcall(function()
-	PhysicsService:RegisterCollisionGroup(NOCLIP_GROUP)
-end)
-pcall(function()
-	PhysicsService:CollisionGroupSetCollidable(NOCLIP_GROUP, DEFAULT_GROUP, false)
-	PhysicsService:CollisionGroupSetCollidable(NOCLIP_GROUP, NOCLIP_GROUP, false)
-end)
-
-local function setPartNoClip(part)
-	if part:IsA("BasePart") then
-		part.CanCollide = false
-		part.CollisionGroup = NOCLIP_GROUP
-	end
+local function GetRandomUnusedPlayer()
+    local candidates = {}
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+            if TrollingSettings.TeamCheck and IsSameTeam(plr) then continue end
+            if not TeleportedThisCycle[plr] then
+                table.insert(candidates, plr)
+            end
+        end
+    end
+    if #candidates == 0 then
+        TeleportedThisCycle = {}
+        return GetRandomUnusedPlayer()
+    end
+    local chosen = candidates[math.random(1, #candidates)]
+    TeleportedThisCycle[chosen] = true
+    return chosen
 end
 
-local function setPartDefaultCollision(part)
-	if part:IsA("BasePart") then
-		part.CollisionGroup = DEFAULT_GROUP
-	end
+local function ReleaseTriggerbot()
+    if TriggerbotHolding then
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        TriggerbotHolding = false
+    end
 end
 
-local function applyCharacterNoClip(char)
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			setPartNoClip(obj)
-		end
-	end
-end
+-- ==================== Improved Humanized Aimbot ====================
+RunService.RenderStepped:Connect(function(dt)
+    if not AimSettings.Enabled then
+        ReleaseTriggerbot()
+        HumanState = "idle"
+        CurrentAimTarget = nil
+        return
+    end
 
-local function restoreCharacterCollision(char)
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			setPartDefaultCollision(obj)
-		end
-	end
-end
+    local closest = GetClosestPlayer()
 
-local function startNoclip()
-	if noclipConn then
-		return
-	end
+    if closest ~= CurrentAimTarget then
+        CurrentAimTarget = closest
+        TargetAcquiredTime = tick()
+        HumanState = "acquiring"
+        IsTrackingLost = false
+        CorrectionPhase = 0
+    end
 
-	local char = LocalPlayer.Character
-	if char then
-		applyCharacterNoClip(char)
-	end
+    if not CurrentAimTarget or not CurrentAimTarget.Character then
+        ReleaseTriggerbot()
+        HumanState = "idle"
+        return
+    end
 
-	noclipConn = RunService.Stepped:Connect(function()
-		if not noclipEnabled then
-			return
-		end
-		local c = LocalPlayer.Character
-		if not c then
-			return
-		end
-		applyCharacterNoClip(c)
-	end)
+    local targetPart = GetAimPart(CurrentAimTarget.Character)
+    if not targetPart then return end
 
-	if noclipDescConn then
-		noclipDescConn:Disconnect()
-		noclipDescConn = nil
-	end
+    local now = tick()
+    local timeSinceAcquire = now - TargetAcquiredTime
 
-	if char then
-		noclipDescConn = char.DescendantAdded:Connect(function(obj)
-			if noclipEnabled and obj:IsA("BasePart") then
-				setPartNoClip(obj)
-			end
-		end)
-	end
-end
+    if HumanState == "acquiring" and timeSinceAcquire < (0.12 + math.random(0, 280)/1000) then
+        return
+    elseif HumanState == "acquiring" then
+        HumanState = "tracking"
+    end
 
-local function stopNoclip()
-	if noclipConn then
-		noclipConn:Disconnect()
-		noclipConn = nil
-	end
-	if noclipDescConn then
-		noclipDescConn:Disconnect()
-		noclipDescConn = nil
-	end
+    -- Tracking Loss
+    if not IsTrackingLost and math.random(1, 280) == 1 then
+        IsTrackingLost = true
+        TrackingLossTime = now
+    end
 
-	local char = LocalPlayer.Character
-	if char then
-		restoreCharacterCollision(char)
-	end
-end
+    if IsTrackingLost then
+        if now - TrackingLossTime > 0.18 + math.random(0,15)/100 then
+            IsTrackingLost = false
+        else
+            Camera.CFrame = Camera.CFrame * CFrame.Angles(0, math.random(-8,8)/300, 0)
+            return
+        end
+    end
 
-local function stopFly()
-	flyEnabled = false
-	if flyConn then flyConn:Disconnect() flyConn = nil end
-	if inputBeganConn then inputBeganConn:Disconnect() inputBeganConn = nil end
-	if inputEndedConn then inputEndedConn:Disconnect() inputEndedConn = nil end
-	if flyBV then flyBV:Destroy() flyBV = nil end
-	if flyBG then flyBG:Destroy() flyBG = nil end
-	inputState.W = false
-	inputState.A = false
-	inputState.S = false
-	inputState.D = false
-	inputState.Space = false
-	inputState.Ctrl = false
-end
+    -- ==================== Humanized Behavior ====================
+    local targetPos = targetPart.Position
 
-local function startFly()
-	if flyEnabled then
-		return
-	end
+    if LastAimPos then
+        AimInertia = (targetPos - LastAimPos) * 0.65
+    end
+    LastAimPos = targetPos
 
-	local char = LocalPlayer.Character
-	if not char then
-		return
-	end
+    -- Micro Jitter (비주기성 저강도)
+    JitterTime = JitterTime + dt * (1.8 + math.random(-30,30)/100)
+    local microJitter = Vector3.new(
+        math.sin(JitterTime * 3.7) * 0.035 + (math.random(-100,100)/2800),
+        math.cos(JitterTime * 2.9) * 0.028 + (math.random(-100,100)/3200),
+        math.random(-80,80)/4500
+    )
 
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hrp or not hum then
-		return
-	end
+    -- Behavior Offset
+    local behaviorOffset = Vector3.new(
+        math.random(-16,16)/100,
+        math.random(-20,20)/100,
+        math.random(-10,10)/100
+    )
 
-	flyEnabled = true
-	hum.PlatformStand = true
+    -- Multi-phase Correction
+    local correctionOffset = Vector3.new(0,0,0)
+    if math.random(1, 55) == 1 and CorrectionPhase == 0 then
+        CorrectionPhase = 1
+        CorrectionStartTime = now
+        HumanState = "correcting"
+    end
 
-	flyBV = Instance.new("BodyVelocity")
-	flyBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-	flyBV.Velocity = Vector3.zero
-	flyBV.Parent = hrp
+    if CorrectionPhase == 1 then -- Overshoot
+        correctionOffset = AimInertia * (0.85 + math.random(10,60)/100)
+        if now - CorrectionStartTime > 0.13 then
+            CorrectionPhase = 2
+            CorrectionStartTime = now
+        end
+    elseif CorrectionPhase == 2 then -- Reverse Correction
+        correctionOffset = AimInertia * -0.55
+        if now - CorrectionStartTime > 0.17 then
+            CorrectionPhase = 3
+            CorrectionStartTime = now
+        end
+    elseif CorrectionPhase == 3 then -- Stabilization
+        correctionOffset = correctionOffset * 0.4
+        if now - CorrectionStartTime > 0.22 then
+            CorrectionPhase = 0
+            HumanState = "tracking"
+        end
+    end
 
-	flyBG = Instance.new("BodyGyro")
-	flyBG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-	flyBG.P = 1e5
-	flyBG.CFrame = camera.CFrame
-	flyBG.Parent = hrp
+    local finalTarget = targetPos + behaviorOffset + microJitter + correctionOffset * 0.75
 
-	inputBeganConn = UIS.InputBegan:Connect(function(input, gp)
-		if gp then return end
-		if input.KeyCode == Enum.KeyCode.W then inputState.W = true end
-		if input.KeyCode == Enum.KeyCode.A then inputState.A = true end
-		if input.KeyCode == Enum.KeyCode.S then inputState.S = true end
-		if input.KeyCode == Enum.KeyCode.D then inputState.D = true end
-		if input.KeyCode == Enum.KeyCode.Space then inputState.Space = true end
-		if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
-			inputState.Ctrl = true
-		end
-	end)
+    local targetCFrame = CFrame.new(Camera.CFrame.Position, finalTarget)
 
-	inputEndedConn = UIS.InputEnded:Connect(function(input)
-		if input.KeyCode == Enum.KeyCode.W then inputState.W = false end
-		if input.KeyCode == Enum.KeyCode.A then inputState.A = false end
-		if input.KeyCode == Enum.KeyCode.S then inputState.S = false end
-		if input.KeyCode == Enum.KeyCode.D then inputState.D = false end
-		if input.KeyCode == Enum.KeyCode.Space then inputState.Space = false end
-		if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
-			inputState.Ctrl = false
-		end
-	end)
+    -- Dynamic Smoothness
+    local baseSmooth = AimSettings.Smoothness
+    local dynamicSmooth = baseSmooth
 
-	flyConn = RunService.RenderStepped:Connect(function()
-		local currentChar = LocalPlayer.Character
-		local currentHrp = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-		local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
+    if HumanState == "acquiring" then
+        dynamicSmooth = baseSmooth * 0.72
+    elseif HumanState == "correcting" then
+        dynamicSmooth = baseSmooth * (CorrectionPhase == 1 and 1.4 or 1.1)
+    elseif HumanState == "hesitating" then
+        dynamicSmooth = baseSmooth * 0.42
+    end
 
-		if not flyEnabled or not currentChar or not currentHrp or not currentHum or not flyBV or not flyBG then
-			stopFly()
-			if currentHum then currentHum.PlatformStand = false end
-			return
-		end
+    dynamicSmooth = dynamicSmooth + (math.random(-14,14)/220)
+    dynamicSmooth = math.clamp(dynamicSmooth, 0.13, 0.76)
 
-		local camCF = camera.CFrame
-		local moveDir = Vector3.zero
+    Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, dynamicSmooth)
 
-		if inputState.W then moveDir += camCF.LookVector end
-		if inputState.S then moveDir -= camCF.LookVector end
-		if inputState.A then moveDir -= camCF.RightVector end
-		if inputState.D then moveDir += camCF.RightVector end
-		if inputState.Space then moveDir += Vector3.new(0, 1, 0) end
-		if inputState.Ctrl then moveDir -= Vector3.new(0, 1, 0) end
+    -- Triggerbot
+    if AimSettings.Triggerbot then
+        local distance = (targetPart.Position - Camera.CFrame.Position).Magnitude
+        local reactionChance = 68
+        if distance < 30 then reactionChance = 89 end
+        if HumanState == "hesitating" then reactionChance = 23 end
+        if CorrectionPhase > 0 then reactionChance = reactionChance - 12 end
 
-		if moveDir.Magnitude > 0 then
-			moveDir = moveDir.Unit
-		end
-
-		flyBV.Velocity = moveDir * flySpeed
-		flyBG.CFrame = camCF
-		currentHum.PlatformStand = true
-	end)
-end
-
-local function wantsAnyEspVisual()
-	return espEnabled or showName or showBackpack or showTeam or showTracer
-end
-
-local function clearVisual(player)
-	local state = visualState[player]
-	if not state then return end
-
-	if state.updateConn then state.updateConn:Disconnect() end
-	if state.highlight then state.highlight:Destroy() end
-	if state.gui then state.gui:Destroy() end
-	if state.line then state.line:Remove() end
-	visualState[player] = nil
-end
-
-local function createVisual(player)
-	if player == LocalPlayer then return end
-	if not player.Character then return end
-	if not wantsAnyEspVisual() then
-	clearVisual(player)
-	return
-end
-
-	local char = player.Character
-	local head = char:FindFirstChild("Head")
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not head or not hrp then return end
-
-	clearVisual(player)
-
-local state = visualState[player]
-
-if state then
-	clearVisual(player)
-end
-
-state = {}
-visualState[player] = state
-
-	if espEnabled then
-		local highlight = Instance.new("Highlight")
-		highlight.Name = "ESP"
-		highlight.FillTransparency = 0.35
-		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		highlight.FillColor = getColor(player)
-        highlight.OutlineColor = getColor(player)
-		highlight.Parent = char
-		state.highlight = highlight
-	end
-
-	if showName or showBackpack or showTeam then
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "ESP_GUI"
-		gui.Size = UDim2.new(0, 160, 0, 60)
-		gui.StudsOffset = Vector3.new(0, 2.8, 0)
-		gui.AlwaysOnTop = true
-		gui.Parent = head
-
-		local text = Instance.new("TextLabel")
-		text.Size = UDim2.new(1, 0, 1, 0)
-		text.BackgroundTransparency = 1
-		text.TextColor3 = Color3.new(1, 1, 1)
-		text.TextStrokeColor3 = Color3.new(0, 0, 0)
-		text.TextStrokeTransparency = 0
-		text.TextScaled = false
-		text.Font = Enum.Font.SourceSansBold
-		text.TextSize = 14
-		text.Parent = gui
-
-		state.gui = gui
-		state.text = text
-	end
-
-	if showTracer then
-		local line = Drawing.new("Line")
-		line.Thickness = 2
-		line.Transparency = 1
-		line.Color = getColor(player)
-		line.Visible = false
-		state.line = line
-	end
-
-	state.updateConn = RunService.RenderStepped:Connect(function()
-		if not player.Character or not player.Character.Parent then
-			clearVisual(player)
-			return
-		end
-
-		local currentChar = player.Character
-		local currentHead = currentChar:FindFirstChild("Head")
-		local currentHrp = currentChar:FindFirstChild("HumanoidRootPart")
-		if not currentHead or not currentHrp then
-			clearVisual(player)
-			return
-		end
-
-	local color = getColor(player)
-
-	if state.highlight then
-	state.highlight.Enabled = espEnabled
-end
-
-		if state.highlight then
-			state.highlight.FillColor = color
-			state.highlight.OutlineColor = color
-		end
-
-		if state.text then
-			local lines = {}
-
-			if showName then
-				table.insert(lines, player.Name)
-			end
-
-			if showTeam then
-				local team = player.Team and player.Team.Name or "없음"
-				table.insert(lines, "Team: " .. team)
-			end
-
-			if showBackpack then
-				local bp = player:FindFirstChild("Backpack")
-				if bp then
-					local items = {}
-					for _, v in ipairs(bp:GetChildren()) do
-						table.insert(items, v.Name)
-					end
-					table.insert(lines, "Backpack: " .. table.concat(items, ", "))
-				end
-			end
-
-			state.text.Text = table.concat(lines, "\n")
-			local dist = (camera.CFrame.Position - currentHead.Position).Magnitude
-			state.text.TextSize = math.clamp(30 / (dist / 20), 10, 18)
-		end
-
-		if state.line then
-			state.line.Color = color
-			local pos, onScreen = camera:WorldToViewportPoint(currentHrp.Position)
-			if onScreen then
-				state.line.Visible = true
-				state.line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-				state.line.To = Vector2.new(pos.X, pos.Y)
-			else
-				state.line.Visible = false
-			end
-		end
-	end)
-end
-
-local function refreshAllVisuals()
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			createVisual(p)
-		end
-	end
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-	task.wait(1)
-	applyStats(char)
-
-	if spinSpeed > 0 then startSpin(char) end
-
-	if noclipEnabled then
-		stopNoclip()
-		task.wait(0.1)
-		startNoclip()
-	end
-
-	if flyEnabled then
-		stopFly()
-		task.wait(0.2)
-		startFly()
-	end
+        if not TriggerbotHolding and math.random(1,100) <= reactionChance then
+            task.wait(AimSettings.TriggerDelay * (0.55 + math.random(0,90)/100))
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            TriggerbotHolding = true
+        end
+    else
+        ReleaseTriggerbot()
+    end
 end)
 
-task.spawn(function()
-	while true do
-		task.wait(0.2)
-		local char = LocalPlayer.Character
-		if char then
-			applyStats(char)
-		end
-	end
+-- ==================== Teleport Behind ====================
+RunService.Heartbeat:Connect(function()
+    if not TrollingSettings.TeleportBehind then
+        CurrentTrollingTarget = nil
+        return
+    end
+
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+
+    local currentTime = tick()
+
+    if not CurrentTrollingTarget or currentTime - LastTargetChange > TargetChangeInterval
+        or not CurrentTrollingTarget.Character or not CurrentTrollingTarget.Character:FindFirstChild("Humanoid")
+        or CurrentTrollingTarget.Character.Humanoid.Health <= 0 then
+        
+        CurrentTrollingTarget = GetRandomUnusedPlayer()
+        LastTargetChange = currentTime
+    end
+
+    if CurrentTrollingTarget and CurrentTrollingTarget.Character and CurrentTrollingTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local root = CurrentTrollingTarget.Character.HumanoidRootPart
+        local lpRoot = LocalPlayer.Character.HumanoidRootPart
+        local behindCFrame = root.CFrame * CFrame.new(0, -2.8, 5.5)
+        lpRoot.CFrame = behindCFrame
+    end
 end)
 
-UIS.JumpRequest:Connect(function()
-	if not infiniteJump then
-		return
-	end
-
-	local char = LocalPlayer.Character
-	if not char then return end
-
-	local hum = char:FindFirstChild("Humanoid")
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hum or not hrp then return end
-
-	hrp.Velocity = Vector3.new(0, jumpValue, 0)
-	hum:ChangeState(Enum.HumanoidStateType.Jumping)
-	hum.Jump = true
-end)
-
-local Window = Rayfield:CreateWindow({
-	Name = "눕눕 허브",
-	ToggleUIKeybind = "K"
-})
-
-local MainTab = Window:CreateTab("메인", nil)
-MainTab:CreateSection("메인 옵션")
-
-local ESPTab = Window:CreateTab("ESP", nil)
-ESPTab:CreateSection("ESP 옵션")
-
-local HubTab = Window:CreateTab("스크립트 허브", nil)
-HubTab:CreateSection("스크립트 허브들")
-
-local UtilityTab = Window:CreateTab("유틸", nil)
-UtilityTab:CreateSection("안전 유틸리티")
-
-MainTab:CreateButton({
-	Name = "인피니티 야드 실행",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
-	end
-})
-
-MainTab:CreateInput({
-	Name = "TP",
-	PlaceholderText = "닉네임(앞부분)",
-	RemoveTextAfterFocusLost = false,
-	Callback = function(text)
-		text = string.lower(text)
-		local found = {}
-
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and string.find(string.lower(p.Name), text, 1, true) == 1 then
-				table.insert(found, p)
-			end
-		end
-
-		if #found == 1 then
-			local target = found[1]
-			if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character then
-				LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
-			end
-		elseif #found > 1 then
-			warn("닉네임 겹침")
-		else
-			warn("플레이어 없음")
-		end
-	end
-})
-
-MainTab:CreateSlider({
-	Name = "스피드",
-	Range = {0, 500},
-	Increment = 1,
-	CurrentValue = speedValue,
-	Callback = function(v)
-		speedValue = v
-		if LocalPlayer.Character then applyStats(LocalPlayer.Character) end
-	end
-})
-
-MainTab:CreateSlider({
-	Name = "점프",
-	Range = {25, 100},
-	Increment = 1,
-	CurrentValue = jumpValue,
-	Callback = function(v)
-		jumpValue = v
-		if LocalPlayer.Character then applyStats(LocalPlayer.Character) end
-	end
-})
-
-MainTab:CreateToggle({
-	Name = "무한 점프",
-	CurrentValue = false,
-	Callback = function(v)
-		infiniteJump = v
-	end
-})
-
-MainTab:CreateSlider({
-	Name = "스핀",
-	Range = {0, 10000},
-	Increment = 1,
-	CurrentValue = 0,
-	Callback = function(v)
-		spinSpeed = v
-		if v > 0 then
-			if LocalPlayer.Character then startSpin(LocalPlayer.Character) end
-		else
-			stopSpin()
-		end
-	end
-})
-
-MainTab:CreateToggle({
-	Name = "노클립",
-	CurrentValue = false,
-	Callback = function(v)
-		noclipEnabled = v
-		if v then
-			startNoclip()
-		else
-			stopNoclip()
-		end
-	end
-})
-
-
-MainTab:CreateToggle({
-	Name = "플라이",
-	CurrentValue = false,
-	Callback = function(v)
-		if v then
-			startFly()
-		else
-			local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-			stopFly()
-			if hum then hum.PlatformStand = false end
-		end
-	end
-})
-
-MainTab:CreateSlider({
-	Name = "플라이 속도",
-	Range = {10, 300},
-	Increment = 1,
-	CurrentValue = flySpeed,
-	Callback = function(v)
-		flySpeed = v
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "ESP 하이라이트",
-	CurrentValue = false,
-	Callback = function(v)
-		espEnabled = v
-		refreshAllVisuals()
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "닉네임 표시",
-	CurrentValue = false,
-	Callback = function(v)
-		showName = v
-		refreshAllVisuals()
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "백팩 표시",
-	CurrentValue = false,
-	Callback = function(v)
-		showBackpack = v
-		refreshAllVisuals()
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "팀 표시",
-	CurrentValue = false,
-	Callback = function(v)
-		showTeam = v
-		refreshAllVisuals()
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "트레이서",
-	CurrentValue = false,
-	Callback = function(v)
-		showTracer = v
-		refreshAllVisuals()
-	end
-})
-
-local function onCharacterAdded(player)
-	task.wait(1)
-	createVisual(player)
+-- ==================== ESP ====================
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    if ESPObjects[player] then return end
+    local Box = Drawing.new("Square"); Box.Thickness = 2; Box.Filled = false; Box.Transparency = 1
+    local Name = Drawing.new("Text"); Name.Size = 14; Name.Center = true; Name.Outline = true; Name.Transparency = 1
+    local Tracer = Drawing.new("Line"); Tracer.Thickness = 2; Tracer.Transparency = 1
+    local HealthBG = Drawing.new("Square")
+    local HealthFill = Drawing.new("Square")
+    ESPObjects[player] = {Box = Box, Name = Name, Tracer = Tracer, HealthBG = HealthBG, HealthFill = HealthFill, Chams = nil}
 end
 
-for _, p in ipairs(Players:GetPlayers()) do
-	if p ~= LocalPlayer then
-		p.CharacterAdded:Connect(function()
-			onCharacterAdded(p)
-		end)
-		createVisual(p)
-	end
+local function ShouldShowESP(player)
+    if ESPSettings.TeamCheck and IsSameTeam(player) then return false end
+    return true
 end
 
-Players.PlayerAdded:Connect(function(p)
-	if p == LocalPlayer then return end
-	p.CharacterAdded:Connect(function()
-		onCharacterAdded(p)
-	end)
-	createVisual(p)
+local function UpdateESP()
+    FOVCircle.Visible = AimSettings.FOVEnabled and AimSettings.ShowFOVCircle
+    FOVCircle.Radius = AimSettings.FOV
+    FOVCircle.Position = Camera.ViewportSize / 2
+    FOVCircle.Color = AimSettings.FOVColor
+
+    for player, obj in pairs(ESPObjects) do
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and ShouldShowESP(player) then
+            local Root = char:FindFirstChild("HumanoidRootPart")
+            local Head = char:FindFirstChild("Head")
+            if Root and Head then
+                local vp, OnScreen = Camera:WorldToViewportPoint(Root.Position)
+                if ESPSettings.Tracer then
+                    local screenCenter = Camera.ViewportSize / 2
+                    local toPos = OnScreen and Vector2.new(vp.X, vp.Y) or (screenCenter + (Vector2.new(vp.X, vp.Y) - screenCenter).Unit * 1200)
+                    obj.Tracer.From = screenCenter
+                    obj.Tracer.To = toPos
+                    obj.Tracer.Color = ESPSettings.TracerColor
+                    obj.Tracer.Visible = true
+                else
+                    obj.Tracer.Visible = false
+                end
+
+                if OnScreen then
+                    local Top = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0,0.5,0))
+                    local Bottom = Camera:WorldToViewportPoint(Root.Position - Vector3.new(0,3,0))
+                    local Height = Bottom.Y - Top.Y
+                    local Width = Height * 0.6
+
+                    obj.Box.Size = Vector2.new(Width, Height)
+                    obj.Box.Position = Vector2.new(Top.X - Width/2, Top.Y)
+                    obj.Box.Color = ESPSettings.BoxColor
+                    obj.Box.Visible = ESPSettings.Box
+
+                    obj.Name.Text = player.Name
+                    obj.Name.Position = Vector2.new(Top.X, Top.Y - 20)
+                    obj.Name.Color = ESPSettings.NameColor
+                    obj.Name.Visible = ESPSettings.Name
+
+                    if ESPSettings.HealthBar then
+                        local hpRatio = math.clamp(char.Humanoid.Health / char.Humanoid.MaxHealth, 0, 1)
+                        obj.HealthBG.Size = Vector2.new(4, Height)
+                        obj.HealthBG.Position = Vector2.new(Top.X - Width/2 - 8, Top.Y)
+                        obj.HealthBG.Color = Color3.fromRGB(0,0,0)
+                        obj.HealthBG.Visible = true
+
+                        obj.HealthFill.Size = Vector2.new(4, Height * hpRatio)
+                        obj.HealthFill.Position = Vector2.new(Top.X - Width/2 - 8, Top.Y + Height * (1 - hpRatio))
+                        obj.HealthFill.Color = Color3.fromRGB(0, 255, 0)
+                        obj.HealthFill.Visible = true
+                    else
+                        obj.HealthBG.Visible = false
+                        obj.HealthFill.Visible = false
+                    end
+                else
+                    obj.Box.Visible = false
+                    obj.Name.Visible = false
+                    obj.HealthBG.Visible = false
+                    obj.HealthFill.Visible = false
+                end
+
+                if ESPSettings.Chams then
+                    if not obj.Chams then
+                        obj.Chams = Instance.new("Highlight")
+                        obj.Chams.Adornee = char
+                        obj.Chams.FillColor = ESPSettings.ChamsColor
+                        obj.Chams.OutlineColor = ESPSettings.ChamsColor
+                        obj.Chams.FillTransparency = 0.7
+                        obj.Chams.Parent = char
+                    end
+                elseif obj.Chams then
+                    obj.Chams:Destroy()
+                    obj.Chams = nil
+                end
+            end
+        else
+            for _, v in pairs({obj.Box, obj.Name, obj.Tracer, obj.HealthBG, obj.HealthFill}) do
+                if v then v.Visible = false end
+            end
+            if obj.Chams then
+                obj.Chams:Destroy()
+                obj.Chams = nil
+            end
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(UpdateESP)
+
+-- ==================== Player Handling & UI ====================
+local function OnPlayerAdded(plr)
+    if plr == LocalPlayer then return end
+    CreateESP(plr)
+    plr.CharacterAdded:Connect(function() task.wait(0.4) CreateESP(plr) end)
+end
+
+for _, plr in pairs(Players:GetPlayers()) do OnPlayerAdded(plr) end
+Players.PlayerAdded:Connect(OnPlayerAdded)
+
+local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
+MenuGroup:AddButton({Text = 'Unload', Func = function() Library:Unload() end})
+MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'End', NoUI = true })
+Library.ToggleKeybind = Options.MenuKeybind
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({'MenuKeybind'})
+ThemeManager:SetFolder('AdvAimbotHub')
+SaveManager:SetFolder('AdvAimbotHub')
+SaveManager:BuildConfigSection(Tabs['UI Settings'])
+ThemeManager:ApplyToTab(Tabs['UI Settings'])
+SaveManager:LoadAutoloadConfig()
+
+Library.Unloaded:Connect(function()
+    ReleaseTriggerbot()
+    Camera.FieldOfView = 70
+    for _, obj in pairs(ESPObjects) do
+        for _, v in pairs(obj) do
+            if typeof(v) == "Instance" then v:Destroy() end
+        end
+    end
 end)
-
-Players.PlayerRemoving:Connect(function(p)
-	clearVisual(p)
-end)
-
-HubTab:CreateButton({
-	Name = "칼 올킬 (클래식 칼)",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Luk-Script/Kil-All/main/Kill-all.lua"))()
-	end
-})
-
-HubTab:CreateButton({
-	Name = "한국 머더",
-	Callback = function()
-		loadstring(game:HttpGet("https://nil-ware.vercel.app/"))()
-	end
-})
-
-HubTab:CreateButton({
-	Name = "프리즌 라이프",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/zenss555a/script/refs/heads/main/Prison-Life.lua", true))()
-	end
-})
-
-UtilityTab:CreateButton({
-	Name = "캐릭터 리스폰",
-	Callback = function()
-		local char = LocalPlayer.Character
-		if char then
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then hum.Health = 0 end
-		end
-	end
-})
-
-UtilityTab:CreateButton({
-	Name = "스탯 초기화",
-	Callback = function()
-		speedValue = 16
-		jumpValue = 50
-		if LocalPlayer.Character then
-			applyStats(LocalPlayer.Character)
-		end
-	end
-})

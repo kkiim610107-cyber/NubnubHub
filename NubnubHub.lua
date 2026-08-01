@@ -1,727 +1,346 @@
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
-local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local PhysicsService = game:GetService("PhysicsService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
 
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
 
-local speedValue = 16
-local jumpValue = 50
-local spinSpeed = 0
-local spinning = false
-local infiniteJump = false
+local DefaultSpeed = Humanoid.WalkSpeed
+local DefaultJump = Humanoid.JumpPower
 
-local espEnabled = false
-local showName = false
-local showBackpack = false
-local showTeam = false
-local showTracer = false
+-- 움직임 관련
+local SpeedEnabled = false
+local SpeedValue = DefaultSpeed
 
-local noclipEnabled = false
-local noclipConn = nil
-local noclipDescConn = nil
+local JumpEnabled = false
+local JumpValue = DefaultJump
 
-local flyEnabled = false
-local flySpeed = 60
+local FLYEnabled = false
+local FlySpeed = 100
 
-local flyBV = nil
-local flyBG = nil
-local flyConn = nil
-local inputBeganConn = nil
-local inputEndedConn = nil
-local inputState = {
-	W = false,
-	A = false,
-	S = false,
-	D = false,
-	Space = false,
-	Ctrl = false
-}
+-- ESP 관련
+local ESPEnabled = false
+local ESPColor = Color3.fromRGB(255, 255, 255)
+local ESPTransparency = 0.5
 
-local NOCLIP_GROUP = "NubNoClip"
-local DEFAULT_GROUP = "Default"
-local ESP_COLOR = Color3.fromRGB(0, 255, 0)
-
-local visualState = {}
-
-local function getColor(player)
-	if player and player.Team and player.Team.TeamColor then
-		return player.Team.TeamColor.Color
-	end
-
-	return ESP_COLOR
-end
-
-local function applyStats(char)
-	local hum = char:FindFirstChild("Humanoid")
-	if hum then
-		hum.WalkSpeed = speedValue
-		hum.UseJumpPower = true
-		hum.JumpPower = jumpValue
-	end
-end
-
-local function startSpin(char)
-	if spinning then
-		return
-	end
-	spinning = true
-	local hrp = char:WaitForChild("HumanoidRootPart")
-	task.spawn(function()
-		while spinning and hrp and hrp.Parent do
-			hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(spinSpeed), 0)
-			task.wait()
-		end
-	end)
-end
-
-local function stopSpin()
-	spinning = false
-end
-
-pcall(function()
-	PhysicsService:RegisterCollisionGroup(NOCLIP_GROUP)
-end)
-pcall(function()
-	PhysicsService:CollisionGroupSetCollidable(NOCLIP_GROUP, DEFAULT_GROUP, false)
-	PhysicsService:CollisionGroupSetCollidable(NOCLIP_GROUP, NOCLIP_GROUP, false)
-end)
-
-local function setPartNoClip(part)
-	if part:IsA("BasePart") then
-		part.CanCollide = false
-		part.CollisionGroup = NOCLIP_GROUP
-	end
-end
-
-local function setPartDefaultCollision(part)
-	if part:IsA("BasePart") then
-		part.CollisionGroup = DEFAULT_GROUP
-	end
-end
-
-local function applyCharacterNoClip(char)
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			setPartNoClip(obj)
-		end
-	end
-end
-
-local function restoreCharacterCollision(char)
-	for _, obj in ipairs(char:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			setPartDefaultCollision(obj)
-		end
-	end
-end
-
-local function startNoclip()
-	if noclipConn then
+-------------------------------------------------
+-- ESP 함수
+-------------------------------------------------
+local function addHighlight(character)
+	if not character or character:FindFirstChildOfClass("Highlight") then
 		return
 	end
 
-	local char = LocalPlayer.Character
-	if char then
-		applyCharacterNoClip(char)
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ESPHighlight"
+	highlight.FillColor = ESPColor
+	highlight.OutlineColor = ESPColor
+	highlight.FillTransparency = ESPTransparency
+	highlight.OutlineTransparency = 0
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = character
+end
+
+local function removeHighlight(character)
+	if not character then return end
+	local hl = character:FindFirstChildOfClass("Highlight")
+	if hl then
+		hl:Destroy()
 	end
+end
 
-	noclipConn = RunService.Stepped:Connect(function()
-		if not noclipEnabled then
-			return
-		end
-		local c = LocalPlayer.Character
-		if not c then
-			return
-		end
-		applyCharacterNoClip(c)
-	end)
-
-	if noclipDescConn then
-		noclipDescConn:Disconnect()
-		noclipDescConn = nil
-	end
-
-	if char then
-		noclipDescConn = char.DescendantAdded:Connect(function(obj)
-			if noclipEnabled and obj:IsA("BasePart") then
-				setPartNoClip(obj)
+local function applyESPToAll()
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.Character then
+			if ESPEnabled then
+				addHighlight(plr.Character)
+			else
+				removeHighlight(plr.Character)
 			end
-		end)
+		end
 	end
 end
 
-local function stopNoclip()
-	if noclipConn then
-		noclipConn:Disconnect()
-		noclipConn = nil
-	end
-	if noclipDescConn then
-		noclipDescConn:Disconnect()
-		noclipDescConn = nil
-	end
+local function onPlayerAdded(plr)
+	plr.CharacterAdded:Connect(function(char)
+		char:WaitForChild("HumanoidRootPart", 5)
+		if ESPEnabled then
+			addHighlight(char)
+		end
+	end)
 
-	local char = LocalPlayer.Character
-	if char then
-		restoreCharacterCollision(char)
+	if plr.Character and ESPEnabled then
+		addHighlight(plr.Character)
 	end
 end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+	onPlayerAdded(plr)
+end
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-------------------------------------------------
+-- 플라이 함수
+-------------------------------------------------
+local flyConnection = nil
+local bodyVelocity = nil
+local bodyGyro = nil
 
 local function stopFly()
-	flyEnabled = false
-	if flyConn then flyConn:Disconnect() flyConn = nil end
-	if inputBeganConn then inputBeganConn:Disconnect() inputBeganConn = nil end
-	if inputEndedConn then inputEndedConn:Disconnect() inputEndedConn = nil end
-	if flyBV then flyBV:Destroy() flyBV = nil end
-	if flyBG then flyBG:Destroy() flyBG = nil end
-	inputState.W = false
-	inputState.A = false
-	inputState.S = false
-	inputState.D = false
-	inputState.Space = false
-	inputState.Ctrl = false
+	if flyConnection then
+		flyConnection:Disconnect()
+		flyConnection = nil
+	end
+	if bodyVelocity then
+		bodyVelocity:Destroy()
+		bodyVelocity = nil
+	end
+	if bodyGyro then
+		bodyGyro:Destroy()
+		bodyGyro = nil
+	end
+	if Humanoid then
+		Humanoid.PlatformStand = false
+	end
 end
 
 local function startFly()
-	if flyEnabled then
-		return
-	end
+	stopFly()
 
-	local char = LocalPlayer.Character
-	if not char then
-		return
-	end
+	if not Character or not Humanoid then return end
+	local hrp = Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
 
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hrp or not hum then
-		return
-	end
+	Humanoid.PlatformStand = true
 
-	flyEnabled = true
-	hum.PlatformStand = true
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+	bodyVelocity.Velocity = Vector3.zero
+	bodyVelocity.Parent = hrp
 
-	flyBV = Instance.new("BodyVelocity")
-	flyBV.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-	flyBV.Velocity = Vector3.zero
-	flyBV.Parent = hrp
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+	bodyGyro.P = 9e4
+	bodyGyro.Parent = hrp
 
-	flyBG = Instance.new("BodyGyro")
-	flyBG.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-	flyBG.P = 1e5
-	flyBG.CFrame = camera.CFrame
-	flyBG.Parent = hrp
-
-	inputBeganConn = UIS.InputBegan:Connect(function(input, gp)
-		if gp then return end
-		if input.KeyCode == Enum.KeyCode.W then inputState.W = true end
-		if input.KeyCode == Enum.KeyCode.A then inputState.A = true end
-		if input.KeyCode == Enum.KeyCode.S then inputState.S = true end
-		if input.KeyCode == Enum.KeyCode.D then inputState.D = true end
-		if input.KeyCode == Enum.KeyCode.Space then inputState.Space = true end
-		if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
-			inputState.Ctrl = true
-		end
-	end)
-
-	inputEndedConn = UIS.InputEnded:Connect(function(input)
-		if input.KeyCode == Enum.KeyCode.W then inputState.W = false end
-		if input.KeyCode == Enum.KeyCode.A then inputState.A = false end
-		if input.KeyCode == Enum.KeyCode.S then inputState.S = false end
-		if input.KeyCode == Enum.KeyCode.D then inputState.D = false end
-		if input.KeyCode == Enum.KeyCode.Space then inputState.Space = false end
-		if input.KeyCode == Enum.KeyCode.LeftControl or input.KeyCode == Enum.KeyCode.RightControl then
-			inputState.Ctrl = false
-		end
-	end)
-
-	flyConn = RunService.RenderStepped:Connect(function()
-		local currentChar = LocalPlayer.Character
-		local currentHrp = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-		local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
-
-		if not flyEnabled or not currentChar or not currentHrp or not currentHum or not flyBV or not flyBG then
+	flyConnection = RunService.Heartbeat:Connect(function()
+		if not FLYEnabled or not hrp or not hrp.Parent then
 			stopFly()
-			if currentHum then currentHum.PlatformStand = false end
 			return
 		end
 
-		local camCF = camera.CFrame
-		local moveDir = Vector3.zero
+		bodyGyro.CFrame = Camera.CFrame
 
-		if inputState.W then moveDir += camCF.LookVector end
-		if inputState.S then moveDir -= camCF.LookVector end
-		if inputState.A then moveDir -= camCF.RightVector end
-		if inputState.D then moveDir += camCF.RightVector end
-		if inputState.Space then moveDir += Vector3.new(0, 1, 0) end
-		if inputState.Ctrl then moveDir -= Vector3.new(0, 1, 0) end
+		local direction = Vector3.zero
 
-		if moveDir.Magnitude > 0 then
-			moveDir = moveDir.Unit
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+			direction += Camera.CFrame.LookVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+			direction -= Camera.CFrame.LookVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+			direction -= Camera.CFrame.RightVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+			direction += Camera.CFrame.RightVector
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+			direction += Vector3.new(0, 1, 0)
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C) then
+			direction -= Vector3.new(0, 1, 0)
 		end
 
-		flyBV.Velocity = moveDir * flySpeed
-		flyBG.CFrame = camCF
-		currentHum.PlatformStand = true
+		if direction.Magnitude > 0 then
+			direction = direction.Unit
+		end
+
+		bodyVelocity.Velocity = direction * FlySpeed
 	end)
 end
 
-local function wantsAnyEspVisual()
-	return espEnabled or showName or showBackpack or showTeam or showTracer
-end
+-------------------------------------------------
+-- 캐릭터 리스폰 처리
+-------------------------------------------------
+Player.CharacterAdded:Connect(function(char)
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
 
-local function clearVisual(player)
-	local state = visualState[player]
-	if not state then return end
-
-	if state.updateConn then state.updateConn:Disconnect() end
-	if state.highlight then state.highlight:Destroy() end
-	if state.gui then state.gui:Destroy() end
-	if state.line then state.line:Remove() end
-	visualState[player] = nil
-end
-
-local function createVisual(player)
-	if player == LocalPlayer then return end
-	if not player.Character then return end
-	if not wantsAnyEspVisual() then
-	clearVisual(player)
-	return
-end
-
-	local char = player.Character
-	local head = char:FindFirstChild("Head")
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not head or not hrp then return end
-
-	clearVisual(player)
-
-local state = visualState[player]
-
-if state then
-	clearVisual(player)
-end
-
-state = {}
-visualState[player] = state
-
-	if espEnabled then
-		local highlight = Instance.new("Highlight")
-		highlight.Name = "ESP"
-		highlight.FillTransparency = 0.35
-		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		highlight.FillColor = getColor(player)
-        highlight.OutlineColor = getColor(player)
-		highlight.Parent = char
-		state.highlight = highlight
+	if SpeedEnabled then
+		Humanoid.WalkSpeed = SpeedValue
 	end
-
-	if showName or showBackpack or showTeam then
-		local gui = Instance.new("BillboardGui")
-		gui.Name = "ESP_GUI"
-		gui.Size = UDim2.new(0, 160, 0, 60)
-		gui.StudsOffset = Vector3.new(0, 2.8, 0)
-		gui.AlwaysOnTop = true
-		gui.Parent = head
-
-		local text = Instance.new("TextLabel")
-		text.Size = UDim2.new(1, 0, 1, 0)
-		text.BackgroundTransparency = 1
-		text.TextColor3 = Color3.new(1, 1, 1)
-		text.TextStrokeColor3 = Color3.new(0, 0, 0)
-		text.TextStrokeTransparency = 0
-		text.TextScaled = false
-		text.Font = Enum.Font.SourceSansBold
-		text.TextSize = 14
-		text.Parent = gui
-
-		state.gui = gui
-		state.text = text
+	if JumpEnabled then
+		Humanoid.JumpPower = JumpValue
 	end
-
-	if showTracer then
-		local line = Drawing.new("Line")
-		line.Thickness = 2
-		line.Transparency = 1
-		line.Color = getColor(player)
-		line.Visible = false
-		state.line = line
-	end
-
-	state.updateConn = RunService.RenderStepped:Connect(function()
-		if not player.Character or not player.Character.Parent then
-			clearVisual(player)
-			return
-		end
-
-		local currentChar = player.Character
-		local currentHead = currentChar:FindFirstChild("Head")
-		local currentHrp = currentChar:FindFirstChild("HumanoidRootPart")
-		if not currentHead or not currentHrp then
-			clearVisual(player)
-			return
-		end
-
-	local color = getColor(player)
-
-	if state.highlight then
-	state.highlight.Enabled = espEnabled
-end
-
-		if state.highlight then
-			state.highlight.FillColor = color
-			state.highlight.OutlineColor = color
-		end
-
-		if state.text then
-			local lines = {}
-
-			if showName then
-				table.insert(lines, player.Name)
-			end
-
-			if showTeam then
-				local team = player.Team and player.Team.Name or "없음"
-				table.insert(lines, "Team: " .. team)
-			end
-
-			if showBackpack then
-				local bp = player:FindFirstChild("Backpack")
-				if bp then
-					local items = {}
-					for _, v in ipairs(bp:GetChildren()) do
-						table.insert(items, v.Name)
-					end
-					table.insert(lines, "Backpack: " .. table.concat(items, ", "))
-				end
-			end
-
-			state.text.Text = table.concat(lines, "\n")
-			local dist = (camera.CFrame.Position - currentHead.Position).Magnitude
-			state.text.TextSize = math.clamp(30 / (dist / 20), 10, 18)
-		end
-
-		if state.line then
-			state.line.Color = color
-			local pos, onScreen = camera:WorldToViewportPoint(currentHrp.Position)
-			if onScreen then
-				state.line.Visible = true
-				state.line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-				state.line.To = Vector2.new(pos.X, pos.Y)
-			else
-				state.line.Visible = false
-			end
-		end
-	end)
-end
-
-local function refreshAllVisuals()
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			createVisual(p)
-		end
-	end
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-	task.wait(1)
-	applyStats(char)
-
-	if spinSpeed > 0 then startSpin(char) end
-
-	if noclipEnabled then
-		stopNoclip()
-		task.wait(0.1)
-		startNoclip()
-	end
-
-	if flyEnabled then
-		stopFly()
-		task.wait(0.2)
+	if FLYEnabled then
+		task.wait(0.1) -- 약간의 딜레이 후 플라이 재시작
 		startFly()
 	end
 end)
 
-task.spawn(function()
-	while true do
-		task.wait(0.2)
-		local char = LocalPlayer.Character
-		if char then
-			applyStats(char)
-		end
-	end
-end)
-
-UIS.JumpRequest:Connect(function()
-	if not infiniteJump then
-		return
-	end
-
-	local char = LocalPlayer.Character
-	if not char then return end
-
-	local hum = char:FindFirstChild("Humanoid")
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hum or not hrp then return end
-
-	hrp.Velocity = Vector3.new(0, jumpValue, 0)
-	hum:ChangeState(Enum.HumanoidStateType.Jumping)
-	hum.Jump = true
-end)
-
-local Window = Rayfield:CreateWindow({
-	Name = "눕눕 허브",
-	ToggleUIKeybind = "K"
+-------------------------------------------------
+-- UI
+-------------------------------------------------
+local Window = WindUI:CreateWindow({
+	Title = "눕눕 허브 V2",
+	Icon = "thumbs-up",
+	Author = "내가 만듦",
+	Folder = "NubNubHub",
 })
 
-local MainTab = Window:CreateTab("메인", nil)
-MainTab:CreateSection("메인 옵션")
+local Main = Window:Tab({
+	Title = "메인 탭",
+	Icon = "house",
+	Locked = false,
+})
 
-local ESPTab = Window:CreateTab("ESP", nil)
-ESPTab:CreateSection("ESP 옵션")
+Main:Select()
 
-local HubTab = Window:CreateTab("스크립트 허브", nil)
-HubTab:CreateSection("스크립트 허브들")
-
-local UtilityTab = Window:CreateTab("유틸", nil)
-UtilityTab:CreateSection("안전 유틸리티")
-
-MainTab:CreateButton({
-	Name = "인피니티 야드 실행",
+Main:Button({
+	Title = "인피니티 야드 실행",
+	Desc = "Infinity Yield",
+	Locked = false,
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+		loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
 	end
 })
 
-MainTab:CreateInput({
-	Name = "TP",
-	PlaceholderText = "닉네임(앞부분)",
-	RemoveTextAfterFocusLost = false,
-	Callback = function(text)
-		text = string.lower(text)
-		local found = {}
-
-		for _, p in ipairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer and string.find(string.lower(p.Name), text, 1, true) == 1 then
-				table.insert(found, p)
-			end
-		end
-
-		if #found == 1 then
-			local target = found[1]
-			if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character then
-				LocalPlayer.Character:MoveTo(target.Character.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
-			end
-		elseif #found > 1 then
-			warn("닉네임 겹침")
-		else
-			warn("플레이어 없음")
+-- 스피드
+Main:Toggle({
+	Title = "스피드",
+	Desc = "대충 이거 켜져있어야 스피드 조절 가능 ㅇㅇ",
+	Icon = "sport-shoe",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SpeedEnabled = state
+		if Humanoid then
+			Humanoid.WalkSpeed = SpeedEnabled and SpeedValue or DefaultSpeed
 		end
 	end
 })
 
-MainTab:CreateSlider({
-	Name = "스피드",
-	Range = {0, 500},
-	Increment = 1,
-	CurrentValue = speedValue,
-	Callback = function(v)
-		speedValue = v
-		if LocalPlayer.Character then applyStats(LocalPlayer.Character) end
-	end
-})
-
-MainTab:CreateSlider({
-	Name = "점프",
-	Range = {25, 100},
-	Increment = 1,
-	CurrentValue = jumpValue,
-	Callback = function(v)
-		jumpValue = v
-		if LocalPlayer.Character then applyStats(LocalPlayer.Character) end
-	end
-})
-
-MainTab:CreateToggle({
-	Name = "무한 점프",
-	CurrentValue = false,
-	Callback = function(v)
-		infiniteJump = v
-	end
-})
-
-MainTab:CreateSlider({
-	Name = "스핀",
-	Range = {0, 10000},
-	Increment = 1,
-	CurrentValue = 0,
-	Callback = function(v)
-		spinSpeed = v
-		if v > 0 then
-			if LocalPlayer.Character then startSpin(LocalPlayer.Character) end
-		else
-			stopSpin()
+Main:Slider({
+	Title = "스피드",
+	Desc = "스피드 조절하는거임",
+	Step = 1,
+	Value = {
+		Min = 1,
+		Max = 500,
+		Default = DefaultSpeed,
+	},
+	Callback = function(value)
+		SpeedValue = value
+		if SpeedEnabled and Humanoid then
+			Humanoid.WalkSpeed = value
 		end
 	end
 })
 
-MainTab:CreateToggle({
-	Name = "노클립",
-	CurrentValue = false,
-	Callback = function(v)
-		noclipEnabled = v
-		if v then
-			startNoclip()
-		else
-			stopNoclip()
+-- 점프
+Main:Toggle({
+	Title = "점프",
+	Desc = "대충 이거 켜져있어야 점프파워 조절 가능 ㅇㅇ",
+	Icon = "footprints",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		JumpEnabled = state
+		if Humanoid then
+			Humanoid.JumpPower = JumpEnabled and JumpValue or DefaultJump
 		end
 	end
 })
 
+Main:Slider({
+	Title = "점프 파워",
+	Desc = "점프 파워 조절하는거임",
+	Step = 1,
+	Value = {
+		Min = 1,
+		Max = 500,
+		Default = DefaultJump,
+	},
+	Callback = function(value)
+		JumpValue = value
+		if JumpEnabled and Humanoid then
+			Humanoid.JumpPower = value
+		end
+	end
+})
 
-MainTab:CreateToggle({
-	Name = "플라이",
-	CurrentValue = false,
-	Callback = function(v)
-		if v then
+-- 플라이
+Main:Toggle({
+	Title = "플라이",
+	Desc = "시발 당연히 날라다니는거임",
+	Icon = "plane",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		FLYEnabled = state
+		if state then
 			startFly()
 		else
-			local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 			stopFly()
-			if hum then hum.PlatformStand = false end
 		end
 	end
 })
 
-MainTab:CreateSlider({
-	Name = "플라이 속도",
-	Range = {10, 300},
-	Increment = 1,
-	CurrentValue = flySpeed,
-	Callback = function(v)
-		flySpeed = v
+Main:Slider({
+	Title = "플라이 속도",
+	Desc = "플라이 속도 조절하는거임",
+	Step = 1,
+	Value = {
+		Min = 1,
+		Max = 500,
+		Default = 100,
+	},
+	Callback = function(value)
+		FlySpeed = value
 	end
 })
 
-ESPTab:CreateToggle({
-	Name = "ESP 하이라이트",
-	CurrentValue = false,
-	Callback = function(v)
-		espEnabled = v
-		refreshAllVisuals()
+Main:Divider()
+
+-- ESP
+Main:Toggle({
+	Title = "ESP",
+	Desc = "이거 키면 하이라이트로 보여줌",
+	Icon = "spotlight",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		ESPEnabled = state
+		applyESPToAll()
 	end
 })
 
-ESPTab:CreateToggle({
-	Name = "닉네임 표시",
-	CurrentValue = false,
-	Callback = function(v)
-		showName = v
-		refreshAllVisuals()
+Main:Colorpicker({
+	Title = "ESP 색 정하기",
+	Desc = "색 바꾸고 토글 껐다 키면 적용됨",
+	Default = Color3.fromRGB(255, 255, 255),
+	Transparency = 0,
+	Locked = false,
+	Callback = function(color)
+		ESPColor = color
 	end
 })
 
-ESPTab:CreateToggle({
-	Name = "백팩 표시",
-	CurrentValue = false,
-	Callback = function(v)
-		showBackpack = v
-		refreshAllVisuals()
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "팀 표시",
-	CurrentValue = false,
-	Callback = function(v)
-		showTeam = v
-		refreshAllVisuals()
-	end
-})
-
-ESPTab:CreateToggle({
-	Name = "트레이서",
-	CurrentValue = false,
-	Callback = function(v)
-		showTracer = v
-		refreshAllVisuals()
-	end
-})
-
-local function onCharacterAdded(player)
-	task.wait(1)
-	createVisual(player)
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-	if p ~= LocalPlayer then
-		p.CharacterAdded:Connect(function()
-			onCharacterAdded(p)
-		end)
-		createVisual(p)
-	end
-end
-
-Players.PlayerAdded:Connect(function(p)
-	if p == LocalPlayer then return end
-	p.CharacterAdded:Connect(function()
-		onCharacterAdded(p)
-	end)
-	createVisual(p)
-end)
-
-Players.PlayerRemoving:Connect(function(p)
-	clearVisual(p)
-end)
-
-HubTab:CreateButton({
-	Name = "칼 올킬 (클래식 칼)",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Luk-Script/Kil-All/main/Kill-all.lua"))()
-	end
-})
-
-HubTab:CreateButton({
-	Name = "에임 핵",
-	Callback = function()
-		loadstring(game:HttpGet("https://apigetunx.vercel.app/UNX.lua", true))()
-	end
-})
-
-HubTab:CreateButton({
-	Name = "한국 머더",
-	Callback = function()
-		loadstring(game:HttpGet("https://nil-ware.vercel.app/"))()
-	end
-})
-
-HubTab:CreateButton({
-	Name = "프리즌 라이프",
-	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/zenss555a/script/refs/heads/main/Prison-Life.lua", true))()
-	end
-})
-
-UtilityTab:CreateButton({
-	Name = "캐릭터 리스폰",
-	Callback = function()
-		local char = LocalPlayer.Character
-		if char then
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then hum.Health = 0 end
-		end
-	end
-})
-
-UtilityTab:CreateButton({
-	Name = "스탯 초기화",
-	Callback = function()
-		speedValue = 16
-		jumpValue = 50
-		if LocalPlayer.Character then
-			applyStats(LocalPlayer.Character)
-		end
+Main:Slider({
+	Title = "ESP 투명도",
+	Desc = "안쪽 투명도 (1 = 투명) / 토글 껐다 키면 적용",
+	Step = 0.1,
+	Value = {
+		Min = 0,
+		Max = 1,
+		Default = 0.5,
+	},
+	Callback = function(value)
+		ESPTransparency = value
 	end
 })

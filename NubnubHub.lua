@@ -687,7 +687,7 @@ local Utility = Window:Tab({
 })
 
 local Visuals = Window:Tab({
-	Title = "비주얼",
+	Title = "비쥬얼",
 	Icon = "palette",
 	Locked = false,
 })
@@ -711,7 +711,7 @@ Main:Select()
 --------------------------------------------------------------------------------
 Main:Button({
 	Title = "인피니티 야드",
-	Desc = "기본 어드민 스크립트 실행",
+	Desc = "인피니티 야드 실행",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
@@ -723,7 +723,7 @@ Main:Divider()
 -- 이동 기능
 Main:Toggle({
 	Title = "스피드",
-	Desc = "이동 속도 기능 활성화",
+	Desc = "스피드 핵 활성화",
 	Icon = "sport-shoe",
 	Type = "Checkbox",
 	Value = false,
@@ -735,7 +735,7 @@ Main:Toggle({
 
 Main:Slider({
 	Title = "스피드 값",
-	Desc = "이동 속도 조절",
+	Desc = "스피드 값 조절",
 	Step = 1,
 	Value = { Min = 1, Max = 500, Default = DefaultSpeed },
 	Callback = function(value)
@@ -746,7 +746,7 @@ Main:Slider({
 
 Main:Toggle({
 	Title = "점프 파워",
-	Desc = "점프력 기능 활성화",
+	Desc = "점프 핵 활성화",
 	Icon = "footprints",
 	Type = "Checkbox",
 	Value = false,
@@ -758,7 +758,7 @@ Main:Toggle({
 
 Main:Slider({
 	Title = "점프 파워 값",
-	Desc = "점프 높이 조절",
+	Desc = "점프 파워 조절",
 	Step = 1,
 	Value = { Min = 1, Max = 500, Default = DefaultJump },
 	Callback = function(value)
@@ -769,7 +769,7 @@ Main:Slider({
 
 Main:Toggle({
 	Title = "무한 점프",
-	Desc = "공중 연속 점프",
+	Desc = "무한 연속 점프",
 	Icon = "arrow-up-circle",
 	Type = "Checkbox",
 	Value = false,
@@ -780,7 +780,7 @@ Main:Toggle({
 
 Main:Toggle({
 	Title = "플라이",
-	Desc = "공중 비행",
+	Desc = "당연히 닉값대로 날라다니는 거죠",
 	Icon = "plane",
 	Type = "Checkbox",
 	Value = false,
@@ -792,7 +792,7 @@ Main:Toggle({
 
 Main:Slider({
 	Title = "플라이 속도",
-	Desc = "비행 속도 조절",
+	Desc = "플라이 속도 조절",
 	Step = 1,
 	Value = { Min = 1, Max = 500, Default = 50 },
 	Callback = function(value)
@@ -801,7 +801,7 @@ Main:Slider({
 })
 
 Main:Toggle({
-	Title = "스핀봇",
+	Title = "스핀",
 	Desc = "캐릭터 회전",
 	Icon = "rotate-cw",
 	Type = "Checkbox",
@@ -813,9 +813,9 @@ Main:Toggle({
 
 Main:Slider({
 	Title = "스핀 속도",
-	Desc = "회전 속도 조절",
+	Desc = "스핀 속도 조절",
 	Step = 1,
-	Value = { Min = 1, Max = 100, Default = 20 },
+	Value = { Min = 1, Max = 1000, Default = 10 },
 	Callback = function(value)
 		SpinSpeed = value
 	end
@@ -826,7 +826,7 @@ Main:Divider()
 -- ESP 기능
 Main:Toggle({
 	Title = "ESP",
-	Desc = "플레이어 외각선 하이라이트",
+	Desc = "플레이어 외곽선 하이라이트",
 	Icon = "spotlight",
 	Type = "Checkbox",
 	Value = false,
@@ -874,7 +874,7 @@ Main:Colorpicker({
 
 Main:Slider({
 	Title = "ESP Transparency",
-	Desc = "하이라이트 투명도 조절",
+	Desc = "ESP 배경 투명도 조절",
 	Step = 0.1,
 	Value = { Min = 0, Max = 1, Default = 0.5 },
 	Callback = function(value)
@@ -889,7 +889,7 @@ Main:Slider({
 -- Teleport Section
 Utility:Input({
 	Title = "플레이어 텔레포트",
-	Desc = "닉네임 입력 후 엔터 시 이동",
+	Desc = "닉네임 입력 후 엔터 시 텔포",
 	Placeholder = "닉네임 입력...",
 	Value = "",
 	InputIcon = "user",
@@ -925,7 +925,7 @@ Utility:Input({
 
 Utility:Toggle({
 	Title = "Click TP",
-	Desc = "Ctrl 마우스 클릭 지점으로 순간이동",
+	Desc = "Ctrl + 마우스 클릭 지점으로 순간이동",
 	Icon = "mouse-pointer",
 	Type = "Checkbox",
 	Value = false,
@@ -937,7 +937,7 @@ Utility:Toggle({
 -- 위치 저장 및 순간이동
 Utility:Button({
 	Title = "위치 저장",
-	Desc = "현재 좌표 기억",
+	Desc = "현재 좌표 저장",
 	Locked = false,
 	Callback = function()
 		SaveCurrentLocation()
@@ -946,7 +946,7 @@ Utility:Button({
 
 Utility:Button({
 	Title = "저장 위치 이동",
-	Desc = "기억한 좌표로 이동",
+	Desc = "저장 위치로 텔포",
 	Locked = false,
 	Callback = function()
 		TeleportToSavedLocation()
@@ -976,7 +976,7 @@ Utility:Button({
 
 -- Auto Pick Up (버튼 클릭 시 일괄 줍기)
 Utility:Button({
-	Title = "Auto Pick Up",
+	Title = "Item Pick Up",
 	Desc = "워크스페이스 내 아이템 일괄 줍기",
 	Locked = false,
 	Callback = function()
@@ -1035,7 +1035,7 @@ Utility:Divider()
 -- Server & Performance Section
 Utility:Toggle({
 	Title = "Anti AFK",
-	Desc = "20분 잠수 튕김 방지",
+	Desc = "튕김 방지",
 	Icon = "shield-check",
 	Type = "Checkbox",
 	Value = false,
@@ -1088,7 +1088,7 @@ Visuals:Slider({
 
 Visuals:Toggle({
 	Title = "Full Bright",
-	Desc = "어두운 맵 조명 제거",
+	Desc = "화면 밝게 하기",
 	Icon = "sun",
 	Type = "Checkbox",
 	Value = false,
@@ -1131,7 +1131,7 @@ Visuals:Slider({
 })
 
 Visuals:Toggle({
-	Title = "무지개 오라",
+	Title = "본인 무지개",
 	Desc = "캐릭터 무지개 빛 효과",
 	Icon = "sparkle",
 	Type = "Checkbox",
@@ -1143,7 +1143,7 @@ Visuals:Toggle({
 
 Visuals:Slider({
 	Title = "화면 블러",
-	Desc = "화면 흐림 효과 조절",
+	Desc = "화면 블러 효과 조절",
 	Step = 1,
 	Value = { Min = 0, Max = 30, Default = 0 },
 	Callback = function(value)
@@ -1167,7 +1167,7 @@ PlayerTab:Toggle({
 
 PlayerTab:Toggle({
 	Title = "벽 타기",
-	Desc = "W키 누르고 벽에 전진 시 등반",
+	Desc = "대충 벽으로 가면 올려줌",
 	Icon = "arrow-up-right",
 	Type = "Checkbox",
 	Value = false,
@@ -1177,8 +1177,8 @@ PlayerTab:Toggle({
 })
 
 PlayerTab:Button({
-	Title = "즉시 리셋",
-	Desc = "캐릭터 사망 및 리셋",
+	Title = "자살 하기",
+	Desc = "그냥 딸깍 재설정",
 	Locked = false,
 	Callback = function()
 		if Humanoid then Humanoid.Health = 0 end

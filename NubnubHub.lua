@@ -3,6 +3,10 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+local Stats = game:GetService("Stats")
 local Camera = workspace.CurrentCamera
 
 local Player = Players.LocalPlayer
@@ -11,17 +15,18 @@ local Humanoid = Character:WaitForChild("Humanoid")
 
 local DefaultSpeed = Humanoid.WalkSpeed
 local DefaultJump = Humanoid.JumpPower
+local DefaultGravity = workspace.Gravity
 
---서버홉 변,함수------ㅋ-ㅋ-ㅋ-ㅋㄴㅁㅇㅁㄴㅇㅁㄴㅇ-ㅁㄴㅇㅂㅈ-ㅇㄼㅈ-ㅇㅂ-
-
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
-
+-- Server Hop & Rejoin
 local function ServerHop()
-	TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+	TeleportService:Teleport(game.PlaceId, Player)
 end
 
--- 움직임 관련
+local function RejoinServer()
+	TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, Player)
+end
+
+-- Movement Variables
 local SpeedEnabled = false
 local SpeedValue = DefaultSpeed
 
@@ -31,7 +36,49 @@ local JumpValue = DefaultJump
 local FLYEnabled = false
 local FlySpeed = 100
 
--- ESP 관련
+local InfJumpEnabled = false
+local InfJumpConnection = nil
+
+local SpinEnabled = false
+local SpinSpeed = 20
+local SpinConnection = nil
+
+local WallClimbEnabled = false
+local WallClimbConnection = nil
+
+local ShiftLockEnabled = false
+local ShiftLockConnection = nil
+
+-- Visual Variables
+local NoFogEnabled = false
+local DefaultFogEnd = Lighting.FogEnd
+
+local RGBAuraEnabled = false
+local RGBAuraConnection = nil
+
+local BlurEffectObj = nil
+
+-- Utility Variables
+local AntiAFKEnabled = false
+local AntiAFKConnection = nil
+
+local FullbrightEnabled = false
+local DefaultBrightness = Lighting.Brightness
+local DefaultClockTime = Lighting.ClockTime
+local DefaultGlobalShadows = Lighting.GlobalShadows
+
+local ClickTPEnabled = false
+local ClickTPConnection = nil
+
+local SavedCFrame = nil
+local SpectateTarget = nil
+
+-- Watermark & Toggle GUI Variables
+local WatermarkGui = nil
+local WatermarkConnection = nil
+local ToggleBtnGui = nil
+
+-- ESP Variables
 local ESPEnabled = false
 local ShowName = false
 local TeamColorEnabled = false
@@ -39,51 +86,17 @@ local ESPColor = Color3.fromRGB(255, 255, 255)
 local ESPTransparency = 0.5
 local visualState = {}
 
---시야각 부분임
-local Camera = workspace.CurrentCamera
-
+-- FOV
 local function SetFOV(value)
 	Camera.FieldOfView = value
 end
 
---노클립
+-- Noclip
 local NoclipEnabled = false
 local NoclipConnection = nil
 
-local LEG_NAMES = {"LeftLeg", "RightLeg", "LeftLowerLeg", "RightLowerLeg", "LeftFoot", "RightFoot"}
-
-local function IsLeg(part)
-	if not part:IsA("BasePart") then return false end
-	local parent = part.Parent
-	if parent and parent:IsA("Accessory") then return false end
-	
-	for _, name in pairs(LEG_NAMES) do
-		if part.Name == name then
-			return true
-		end
-	end
-	
-	local root = part
-	while root.Parent do
-		root = root.Parent
-		local humanoid = root:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			local isLeg = false
-			for _, legName in pairs(LEG_NAMES) do
-				if part.Name == legName then
-					isLeg = true
-					break
-				end
-			end
-			return isLeg
-		end
-	end
-	return false
-end
-
 local function SetNoclip(enabled)
 	NoclipEnabled = enabled
-
 	if NoclipConnection then
 		NoclipConnection:Disconnect()
 		NoclipConnection = nil
@@ -107,16 +120,305 @@ local function SetNoclip(enabled)
 
 		for _, part in pairs(character:GetDescendants()) do
 			if part:IsA("BasePart") then
-				if IsLeg(part) then
-					part.CanCollide = false
-				else
-					part.CanCollide = false
-				end
+				part.CanCollide = false
 			end
 		end
 	end)
 end
--- ESP
+
+-- Inf Jump
+local function SetInfJump(enabled)
+	InfJumpEnabled = enabled
+	if InfJumpConnection then
+		InfJumpConnection:Disconnect()
+		InfJumpConnection = nil
+	end
+
+	if enabled then
+		InfJumpConnection = UserInputService.JumpRequest:Connect(function()
+			if InfJumpEnabled and Humanoid then
+				Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end)
+	end
+end
+
+-- Spinbot
+local function SetSpin(enabled)
+	SpinEnabled = enabled
+	if SpinConnection then
+		SpinConnection:Disconnect()
+		SpinConnection = nil
+	end
+
+	if enabled then
+		SpinConnection = RunService.RenderStepped:Connect(function()
+			local hrp = Character and Character:FindFirstChild("HumanoidRootPart")
+			if hrp and SpinEnabled then
+				hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(SpinSpeed), 0)
+			end
+		end)
+	end
+end
+
+-- Spider (Wall Climb)
+local function SetWallClimb(enabled)
+	WallClimbEnabled = enabled
+	if WallClimbConnection then
+		WallClimbConnection:Disconnect()
+		WallClimbConnection = nil
+	end
+
+	if enabled then
+		WallClimbConnection = RunService.RenderStepped:Connect(function()
+			if WallClimbEnabled and Character and Character:FindFirstChild("HumanoidRootPart") then
+				local hrp = Character.HumanoidRootPart
+				local ray = Ray.new(hrp.Position, hrp.CFrame.LookVector * 3)
+				local hit = workspace:FindPartOnRayWithIgnoreList(ray, {Character})
+				if hit and UserInputService:IsKeyDown(Enum.KeyCode.W) then
+					hrp.Velocity = Vector3.new(hrp.Velocity.X, 35, hrp.Velocity.Z)
+				end
+			end
+		end)
+	end
+end
+
+-- 시프트 락 강제 활성화
+local function SetShiftLock(enabled)
+	ShiftLockEnabled = enabled
+	Player.DevEnableMouseLock = true
+	if ShiftLockConnection then
+		ShiftLockConnection:Disconnect()
+		ShiftLockConnection = nil
+	end
+	if enabled then
+		ShiftLockConnection = RunService.RenderStepped:Connect(function()
+			if ShiftLockEnabled then
+				Player.DevEnableMouseLock = true
+			end
+		end)
+	end
+end
+
+-- 워크스페이스 아이템 일괄 줍기
+local function PickUpAllItems()
+	local char = Player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Tool") and obj:FindFirstChild("Handle") and not obj:IsDescendantOf(char) and not Players:GetPlayerFromCharacter(obj.Parent) then
+			local handle = obj.Handle :: BasePart
+			if firetouchinterest then
+				firetouchinterest(hrp, handle, 0)
+				firetouchinterest(hrp, handle, 1)
+			else
+				handle.CFrame = hrp.CFrame
+			end
+		end
+	end
+end
+
+-- RGB Aura
+local function SetRGBAura(enabled)
+	RGBAuraEnabled = enabled
+	if RGBAuraConnection then
+		RGBAuraConnection:Disconnect()
+		RGBAuraConnection = nil
+	end
+
+	if enabled then
+		local highlight = Character:FindFirstChild("RGBAuraHL") or Instance.new("Highlight")
+		highlight.Name = "RGBAuraHL"
+		highlight.FillTransparency = 0.5
+		highlight.OutlineTransparency = 0
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.Parent = Character
+
+		RGBAuraConnection = RunService.RenderStepped:Connect(function()
+			local hue = (tick() % 3) / 3
+			local color = Color3.fromHSV(hue, 1, 1)
+			highlight.FillColor = color
+			highlight.OutlineColor = color
+		end)
+	else
+		local hl = Character:FindFirstChild("RGBAuraHL")
+		if hl then hl:Destroy() end
+	end
+end
+
+-- No Fog
+local function SetNoFog(enabled)
+	NoFogEnabled = enabled
+	if enabled then
+		Lighting.FogEnd = 999999
+	else
+		Lighting.FogEnd = DefaultFogEnd
+	end
+end
+
+-- Blur Effect
+local function SetBlurSize(size)
+	if size <= 0 then
+		if BlurEffectObj then BlurEffectObj:Destroy(); BlurEffectObj = nil end
+	else
+		if not BlurEffectObj then
+			BlurEffectObj = Instance.new("BlurEffect")
+			BlurEffectObj.Name = "NubBlurEffect"
+			BlurEffectObj.Parent = Lighting
+		end
+		BlurEffectObj.Size = size
+	end
+end
+
+-- Click TP
+local function SetClickTP(enabled)
+	ClickTPEnabled = enabled
+	if ClickTPConnection then
+		ClickTPConnection:Disconnect()
+		ClickTPConnection = nil
+	end
+
+	if enabled then
+		ClickTPConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+			if gameProcessed then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+				local mouse = Player:GetMouse()
+				local targetPos = mouse.Hit.Position
+				local hrp = Character and Character:FindFirstChild("HumanoidRootPart")
+				if hrp and targetPos then
+					hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+				end
+			end
+		end)
+	end
+end
+
+-- 위치 저장 및 순간이동
+local function SaveCurrentLocation()
+	local hrp = Character and Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		SavedCFrame = hrp.CFrame
+	end
+end
+
+local function TeleportToSavedLocation()
+	local hrp = Character and Character:FindFirstChild("HumanoidRootPart")
+	if hrp and SavedCFrame then
+		hrp.CFrame = SavedCFrame
+	end
+end
+
+-- 파트 부수기 툴만 지급 (Hammer / Delete Tool)
+local function GiveHammerTool()
+	local tool = Instance.new("HopperBin")
+	tool.Name = "파트 부수기"
+	tool.BinType = Enum.BinType.Hammer
+	tool.Parent = Player:FindFirstChildOfClass("Backpack")
+end
+
+-- Anti AFK
+local function SetAntiAFK(enabled)
+	AntiAFKEnabled = enabled
+	if enabled then
+		if not AntiAFKConnection then
+			AntiAFKConnection = Player.Idled:Connect(function()
+				if AntiAFKEnabled then
+					VirtualUser:CaptureController()
+					VirtualUser:ClickButton2(Vector2.new())
+				end
+			end)
+		end
+	else
+		if AntiAFKConnection then
+			AntiAFKConnection:Disconnect()
+			AntiAFKConnection = nil
+		end
+	end
+end
+
+-- Full Bright
+local function SetFullbright(enabled)
+	FullbrightEnabled = enabled
+	if enabled then
+		Lighting.Brightness = 2
+		Lighting.ClockTime = 14
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 100000
+	else
+		Lighting.Brightness = DefaultBrightness
+		Lighting.ClockTime = DefaultClockTime
+		Lighting.GlobalShadows = DefaultGlobalShadows
+		Lighting.FogEnd = DefaultFogEnd
+	end
+end
+
+-- Spectate
+local function SpectatePlayer(targetPlr)
+	if targetPlr and targetPlr.Character and targetPlr.Character:FindFirstChildOfClass("Humanoid") then
+		Camera.CameraSubject = targetPlr.Character:FindFirstChildOfClass("Humanoid")
+		SpectateTarget = targetPlr
+	else
+		if Character and Character:FindFirstChildOfClass("Humanoid") then
+			Camera.CameraSubject = Character:FindFirstChildOfClass("Humanoid")
+		end
+		SpectateTarget = nil
+	end
+end
+
+-- FPS & Ping Watermark (검은색 배경 + 흰색 글씨)
+local function ToggleWatermark(enabled)
+	if not enabled then
+		if WatermarkGui then WatermarkGui:Destroy(); WatermarkGui = nil end
+		if WatermarkConnection then WatermarkConnection:Disconnect(); WatermarkConnection = nil end
+		return
+	end
+
+	if WatermarkGui then return end
+
+	WatermarkGui = Instance.new("ScreenGui")
+	WatermarkGui.Name = "NubNubWatermark"
+	WatermarkGui.ResetOnSpawn = false
+	WatermarkGui.Parent = Player:WaitForChild("PlayerGui")
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 170, 0, 28)
+	frame.Position = UDim2.new(0, 15, 0, 15)
+	frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	frame.BorderSizePixel = 0
+	frame.Parent = WatermarkGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(40, 40, 40)
+	stroke.Thickness = 1
+	stroke.Parent = frame
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.Font = Enum.Font.SourceSansBold
+	label.TextSize = 13
+	label.Text = "FPS: ... | Ping: ..."
+	label.Parent = frame
+
+	local lastUpdate = 0
+	WatermarkConnection = RunService.RenderStepped:Connect(function(dt)
+		lastUpdate = lastUpdate + dt
+		if lastUpdate >= 0.5 then
+			lastUpdate = 0
+			local fps = math.floor(1 / dt)
+			local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+			label.Text = string.format("FPS: %d | Ping: %d ms", fps, ping)
+		end
+	end)
+end
+
+-- ESP System
 local function getESPColor(plr)
 	if TeamColorEnabled and plr and plr.Team and plr.Team.TeamColor then
 		return plr.Team.TeamColor.Color
@@ -180,7 +482,7 @@ local function createVisual(plr)
 		text.TextScaled = false
 		text.Font = Enum.Font.SourceSansBold
 		text.TextSize = 14
-		text.Text = plr.DisplayName ~= plr.Name and (plr.DisplayName .. " (@" .. plr.Name .. ")") or plr.Name
+		text.Text = plr.DisplayName ~= plr.Name and (plr.DisplayName .. " @" .. plr.Name) or plr.Name
 		text.Parent = gui
 
 		state.gui = gui
@@ -219,9 +521,7 @@ end
 
 local function refreshAllVisuals()
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= Player then
-			createVisual(plr)
-		end
+		if plr ~= Player then createVisual(plr) end
 	end
 end
 
@@ -231,51 +531,33 @@ local function onPlayerAdded(plr)
 		task.wait(0.3)
 		createVisual(plr)
 	end)
-	if plr.Character then
-		createVisual(plr)
-	end
+	if plr.Character then createVisual(plr) end
 end
 
 for _, plr in ipairs(Players:GetPlayers()) do
-	if plr ~= Player then
-		onPlayerAdded(plr)
-	end
+	if plr ~= Player then onPlayerAdded(plr) end
 end
 Players.PlayerAdded:Connect(function(plr)
-	if plr ~= Player then
-		onPlayerAdded(plr)
-	end
+	if plr ~= Player then onPlayerAdded(plr) end
 end)
 Players.PlayerRemoving:Connect(function(plr)
 	clearVisual(plr)
 end)
 
--- 플라이
+-- Fly
 local flyConnection = nil
 local bodyVelocity = nil
 local bodyGyro = nil
 
 local function stopFly()
-	if flyConnection then
-		flyConnection:Disconnect()
-		flyConnection = nil
-	end
-	if bodyVelocity then
-		bodyVelocity:Destroy()
-		bodyVelocity = nil
-	end
-	if bodyGyro then
-		bodyGyro:Destroy()
-		bodyGyro = nil
-	end
-	if Humanoid then
-		Humanoid.PlatformStand = false
-	end
+	if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+	if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+	if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+	if Humanoid then Humanoid.PlatformStand = false end
 end
 
 local function startFly()
 	stopFly()
-
 	local char = Player.Character
 	if not char then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
@@ -284,7 +566,6 @@ local function startFly()
 
 	Humanoid = hum
 	Character = char
-
 	hum.PlatformStand = true
 
 	bodyVelocity = Instance.new("BodyVelocity")
@@ -307,76 +588,113 @@ local function startFly()
 		end
 
 		bodyGyro.CFrame = Camera.CFrame
-
 		local direction = Vector3.zero
 
-		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-			direction += Camera.CFrame.LookVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-			direction -= Camera.CFrame.LookVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-			direction -= Camera.CFrame.RightVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-			direction += Camera.CFrame.RightVector
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-			direction += Vector3.new(0, 1, 0)
-		end
-		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C) then
-			direction -= Vector3.new(0, 1, 0)
-		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction += Camera.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction -= Camera.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then direction -= Camera.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then direction += Camera.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then direction += Vector3.new(0, 1, 0) end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C) then direction -= Vector3.new(0, 1, 0) end
 
-		if direction.Magnitude > 0 then
-			direction = direction.Unit
-		end
-
+		if direction.Magnitude > 0 then direction = direction.Unit end
 		bodyVelocity.Velocity = direction * FlySpeed
 	end)
 end
 
--- 캐릭터 리스폰
+-- Respawn Handler
 Player.CharacterAdded:Connect(function(char)
 	Character = char
 	Humanoid = char:WaitForChild("Humanoid")
 
-	if SpeedEnabled then
-		Humanoid.WalkSpeed = SpeedValue
-	end
-	if JumpEnabled then
-		Humanoid.JumpPower = JumpValue
-	end
-	if FLYEnabled then
-		task.wait(0.1)
-		startFly()
-	end
-	if NoclipEnabled then
-		task.wait(0.1)
-		SetNoclip(true)
-	end
+	if SpeedEnabled then Humanoid.WalkSpeed = SpeedValue end
+	if JumpEnabled then Humanoid.JumpPower = JumpValue end
+	if FLYEnabled then task.wait(0.1); startFly() end
+	if NoclipEnabled then task.wait(0.1); SetNoclip(true) end
+	if InfJumpEnabled then SetInfJump(true) end
+	if SpinEnabled then SetSpin(true) end
+	if WallClimbEnabled then SetWallClimb(true) end
+	if ShiftLockEnabled then SetShiftLock(true) end
+	if RGBAuraEnabled then SetRGBAura(true) end
+	if SpectateTarget then SpectatePlayer(SpectateTarget) end
 end)
 
--- UI
+--------------------------------------------------------------------------------
+-- UI Creation (WindUI)
+--------------------------------------------------------------------------------
 local Window = WindUI:CreateWindow({
 	Title = "눕눕 허브 V2",
-	Icon = "thumbs-up",
+	Icon = "sparkles",
 	Author = "내가 만듦",
 	Folder = "NubNubHub",
 })
 
+-- UI 토글 버튼 (검은색 배경 + 흰색 글씨)
+local function CreateUIToggleButton()
+	if ToggleBtnGui then ToggleBtnGui:Destroy() end
+
+	ToggleBtnGui = Instance.new("ScreenGui")
+	ToggleBtnGui.Name = "NubNubOpenButton"
+	ToggleBtnGui.ResetOnSpawn = false
+	ToggleBtnGui.Parent = Player:WaitForChild("PlayerGui")
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 120, 0, 28)
+	btn.Position = UDim2.new(0, 15, 0, 48)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	btn.BorderSizePixel = 0
+	btn.Text = "UI 열기 / 닫기"
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 13
+	btn.Parent = ToggleBtnGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = btn
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(40, 40, 40)
+	stroke.Thickness = 1
+	stroke.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		if Window and Window.Toggle then
+			Window:Toggle()
+		else
+			for _, gui in ipairs(Player.PlayerGui:GetChildren()) do
+				if gui:IsA("ScreenGui") and gui ~= ToggleBtnGui and (gui.Name:find("WindUI") or gui.Name:find("NubNubHub")) then
+					gui.Enabled = not gui.Enabled
+				end
+			end
+		end
+	end)
+end
+
+CreateUIToggleButton()
+
+-- 탭 생성
 local Main = Window:Tab({
-	Title = "메인 탭",
+	Title = "메인",
 	Icon = "house",
 	Locked = false,
 })
 
-Main:Select()
-
 local Utility = Window:Tab({
-	Title = "유틸리티 탭",
+	Title = "유틸리티",
 	Icon = "sliders-horizontal",
+	Locked = false,
+})
+
+local Visuals = Window:Tab({
+	Title = "비주얼",
+	Icon = "palette",
+	Locked = false,
+})
+
+local PlayerTab = Window:Tab({
+	Title = "플레이어",
+	Icon = "user-cog",
 	Locked = false,
 })
 
@@ -386,119 +704,129 @@ local Scripthub = Window:Tab({
 	Locked = false,
 })
 
-
 Main:Select()
 
+--------------------------------------------------------------------------------
+-- 1. 메인 탭
+--------------------------------------------------------------------------------
 Main:Button({
-	Title = "인피니티 야드 실행",
-	Desc = "Infinity Yield",
+	Title = "인피니티 야드",
+	Desc = "기본 어드민 스크립트 실행",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
 	end
 })
 
--- 스피드
+Main:Divider()
+
+-- 이동 기능
 Main:Toggle({
 	Title = "스피드",
-	Desc = "대충 이거 켜져있어야 스피드 조절 가능 ㅇㅇ",
+	Desc = "이동 속도 기능 활성화",
 	Icon = "sport-shoe",
 	Type = "Checkbox",
 	Value = false,
 	Callback = function(state)
 		SpeedEnabled = state
-		if Humanoid then
-			Humanoid.WalkSpeed = SpeedEnabled and SpeedValue or DefaultSpeed
-		end
+		if Humanoid then Humanoid.WalkSpeed = SpeedEnabled and SpeedValue or DefaultSpeed end
 	end
 })
 
 Main:Slider({
-	Title = "스피드",
-	Desc = "스피드 조절하는거임",
+	Title = "스피드 값",
+	Desc = "이동 속도 조절",
 	Step = 1,
-	Value = {
-		Min = 1,
-		Max = 500,
-		Default = DefaultSpeed,
-	},
+	Value = { Min = 1, Max = 500, Default = DefaultSpeed },
 	Callback = function(value)
 		SpeedValue = value
-		if SpeedEnabled and Humanoid then
-			Humanoid.WalkSpeed = value
-		end
+		if SpeedEnabled and Humanoid then Humanoid.WalkSpeed = value end
 	end
 })
 
--- 점프
 Main:Toggle({
-	Title = "점프",
-	Desc = "대충 이거 켜져있어야 점프파워 조절 가능 ㅇㅇ",
+	Title = "점프 파워",
+	Desc = "점프력 기능 활성화",
 	Icon = "footprints",
 	Type = "Checkbox",
 	Value = false,
 	Callback = function(state)
 		JumpEnabled = state
-		if Humanoid then
-			Humanoid.JumpPower = JumpEnabled and JumpValue or DefaultJump
-		end
+		if Humanoid then Humanoid.JumpPower = JumpEnabled and JumpValue or DefaultJump end
 	end
 })
 
 Main:Slider({
-	Title = "점프 파워",
-	Desc = "점프 파워 조절하는거임",
+	Title = "점프 파워 값",
+	Desc = "점프 높이 조절",
 	Step = 1,
-	Value = {
-		Min = 1,
-		Max = 500,
-		Default = DefaultJump,
-	},
+	Value = { Min = 1, Max = 500, Default = DefaultJump },
 	Callback = function(value)
 		JumpValue = value
-		if JumpEnabled and Humanoid then
-			Humanoid.JumpPower = value
-		end
+		if JumpEnabled and Humanoid then Humanoid.JumpPower = value end
 	end
 })
 
--- 플라이
+Main:Toggle({
+	Title = "무한 점프",
+	Desc = "공중 연속 점프",
+	Icon = "arrow-up-circle",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetInfJump(state)
+	end
+})
+
 Main:Toggle({
 	Title = "플라이",
-	Desc = "시발 당연히 날라다니는거임",
+	Desc = "공중 비행",
 	Icon = "plane",
 	Type = "Checkbox",
 	Value = false,
 	Callback = function(state)
 		FLYEnabled = state
-		if state then
-			startFly()
-		else
-			stopFly()
-		end
+		if state then startFly() else stopFly() end
 	end
 })
 
 Main:Slider({
 	Title = "플라이 속도",
-	Desc = "플라이 속도 조절하는거임",
+	Desc = "비행 속도 조절",
 	Step = 1,
-	Value = {
-		Min = 1,
-		Max = 500,
-		Default = 50,
-	},
+	Value = { Min = 1, Max = 500, Default = 50 },
 	Callback = function(value)
 		FlySpeed = value
 	end
 })
 
+Main:Toggle({
+	Title = "스핀봇",
+	Desc = "캐릭터 회전",
+	Icon = "rotate-cw",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetSpin(state)
+	end
+})
+
+Main:Slider({
+	Title = "스핀 속도",
+	Desc = "회전 속도 조절",
+	Step = 1,
+	Value = { Min = 1, Max = 100, Default = 20 },
+	Callback = function(value)
+		SpinSpeed = value
+	end
+})
+
 Main:Divider()
 
--- ESP
+-- ESP 기능
 Main:Toggle({
 	Title = "ESP",
-	Desc = "하이라이트로 사람 보이게 해줌",
+	Desc = "플레이어 외각선 하이라이트",
 	Icon = "spotlight",
 	Type = "Checkbox",
 	Value = false,
@@ -509,8 +837,8 @@ Main:Toggle({
 })
 
 Main:Toggle({
-	Title = "닉네임 표시",
-	Desc = "머리 위에 이름 띄워줌 (무조건 흰색)",
+	Title = "Name ESP",
+	Desc = "머리 위 플레이어 이름 표시",
 	Icon = "type",
 	Type = "Checkbox",
 	Value = false,
@@ -521,8 +849,8 @@ Main:Toggle({
 })
 
 Main:Toggle({
-	Title = "팀 색 ESP",
-	Desc = "켜면 팀 색깔로 ESP 색 바뀜",
+	Title = "Team Color ESP",
+	Desc = "팀 색상으로 ESP 표시",
 	Icon = "users",
 	Type = "Checkbox",
 	Value = false,
@@ -533,8 +861,8 @@ Main:Toggle({
 })
 
 Main:Colorpicker({
-	Title = "ESP 색 정하기",
-	Desc = "팀 색 꺼져있을 때 쓰는 기본 색임",
+	Title = "ESP Color",
+	Desc = "기본 색상 설정",
 	Default = Color3.fromRGB(255, 255, 255),
 	Transparency = 0,
 	Locked = false,
@@ -545,39 +873,30 @@ Main:Colorpicker({
 })
 
 Main:Slider({
-	Title = "ESP 투명도",
-	Desc = "안쪽 투명도 (1 = 완전 투명)",
+	Title = "ESP Transparency",
+	Desc = "하이라이트 투명도 조절",
 	Step = 0.1,
-	Value = {
-		Min = 0,
-		Max = 1,
-		Default = 0.5,
-	},
+	Value = { Min = 0, Max = 1, Default = 0.5 },
 	Callback = function(value)
 		ESPTransparency = value
 		refreshAllVisuals()
 	end
 })
 
--- 유틸탭
-local TeleportInput = Utility:Input({
+--------------------------------------------------------------------------------
+-- 2. 유틸리티 탭
+--------------------------------------------------------------------------------
+-- Teleport Section
+Utility:Input({
 	Title = "플레이어 텔레포트",
-	Desc = "닉네임 앞부분만 치고 엔터 (디플닉/찐닉 둘 다 가능)",
-	Placeholder = "닉네임 입력 후 엔터...",
+	Desc = "닉네임 입력 후 엔터 시 이동",
+	Placeholder = "닉네임 입력...",
 	Value = "",
 	InputIcon = "user",
 	Type = "Input",
 	Callback = function(text)
 		text = (text or ""):match("^%s*(.-)%s*$") or ""
-
-		if text == "" then
-			return
-		end
-
-		if text == "닉넴 겹침" then
-			TeleportInput:Set("")
-			return
-		end
+		if text == "" then return end
 
 		local matches = {}
 		local search = string.lower(text)
@@ -587,32 +906,56 @@ local TeleportInput = Utility:Input({
 				local uname = string.lower(plr.Name)
 				local dname = string.lower(plr.DisplayName)
 
-				if string.sub(uname, 1, #search) == search
-					or string.sub(dname, 1, #search) == search then
+				if string.sub(uname, 1, #search) == search or string.sub(dname, 1, #search) == search then
 					table.insert(matches, plr)
 				end
 			end
 		end
 
-		if #matches == 0 then
-			return
-		elseif #matches == 1 then
+		if #matches == 1 then
 			local target = matches[1]
 			local targetHRP = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 			local myHRP = Character and Character:FindFirstChild("HumanoidRootPart")
-
 			if targetHRP and myHRP then
 				myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 3)
 			end
-		else
-			TeleportInput:Set("닉넴 겹침")
 		end
 	end
 })
 
 Utility:Toggle({
-	Title = "노클립",
-	Desc = "대충 벽통과 ㅇㅋ?",
+	Title = "Click TP",
+	Desc = "Ctrl 마우스 클릭 지점으로 순간이동",
+	Icon = "mouse-pointer",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetClickTP(state)
+	end
+})
+
+-- 위치 저장 및 순간이동
+Utility:Button({
+	Title = "위치 저장",
+	Desc = "현재 좌표 기억",
+	Locked = false,
+	Callback = function()
+		SaveCurrentLocation()
+	end
+})
+
+Utility:Button({
+	Title = "저장 위치 이동",
+	Desc = "기억한 좌표로 이동",
+	Locked = false,
+	Callback = function()
+		TeleportToSavedLocation()
+	end
+})
+
+Utility:Toggle({
+	Title = "Noclip",
+	Desc = "벽 통과 기능",
 	Icon = "hat-glasses",
 	Type = "Checkbox",
 	Value = false,
@@ -621,34 +964,233 @@ Utility:Toggle({
 	end
 })
 
+-- 파트 부수기
 Utility:Button({
-	Title = "서버 홉",
-	Desc = "대충 서버 이동하는거임(같은섭 걸릴수도있음)",
+	Title = "파트 부수기",
+	Desc = "클라이언트",
+	Locked = false,
+	Callback = function()
+		GiveHammerTool()
+	end
+})
+
+-- Auto Pick Up (버튼 클릭 시 일괄 줍기)
+Utility:Button({
+	Title = "Auto Pick Up",
+	Desc = "워크스페이스 내 아이템 일괄 줍기",
+	Locked = false,
+	Callback = function()
+		PickUpAllItems()
+	end
+})
+
+Utility:Divider()
+
+-- Spectate Section
+local spectateSearchPlayer = nil
+
+Utility:Input({
+	Title = "관전",
+	Desc = "닉네임 입력 후 엔터 시 관전",
+	Placeholder = "닉네임 입력...",
+	Value = "",
+	InputIcon = "eye",
+	Type = "Input",
+	Callback = function(text)
+		text = (text or ""):match("^%s*(.-)%s*$") or ""
+		if text == "" then SpectatePlayer(nil); return end
+
+		local matches = {}
+		local search = string.lower(text)
+
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= Player then
+				local uname = string.lower(plr.Name)
+				local dname = string.lower(plr.DisplayName)
+
+				if string.sub(uname, 1, #search) == search or string.sub(dname, 1, #search) == search then
+					table.insert(matches, plr)
+				end
+			end
+		end
+
+		if #matches == 1 then
+			spectateSearchPlayer = matches[1]
+			SpectatePlayer(spectateSearchPlayer)
+		end
+	end
+})
+
+Utility:Button({
+	Title = "관전 해제",
+	Desc = "내 캐릭터 시점으로 복귀",
+	Locked = false,
+	Callback = function()
+		SpectatePlayer(nil)
+	end
+})
+
+Utility:Divider()
+
+-- Server & Performance Section
+Utility:Toggle({
+	Title = "Anti AFK",
+	Desc = "20분 잠수 튕김 방지",
+	Icon = "shield-check",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetAntiAFK(state)
+	end
+})
+
+Utility:Toggle({
+	Title = "FPS & Ping",
+	Desc = "화면 좌측 상단 성능 표시",
+	Icon = "activity",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		ToggleWatermark(state)
+	end
+})
+
+Utility:Button({
+	Title = "Server Hop",
+	Desc = "다른 무작위 서버로 이동",
 	Locked = false,
 	Callback = function()
 		ServerHop()
 	end
 })
 
-Utility:Slider({
-	Title = "시야각",
-	Desc = "시야각 조절하는거",
-	Step = 1,
-	Value = {
-		Min = 10,
-		Max = 120,
-		Default = 70,
-	},
-	Callback = function(value)
-		 SetFOV(value)
+Utility:Button({
+	Title = "Rejoin",
+	Desc = "현재 접속 중인 서버로 재접속",
+	Locked = false,
+	Callback = function()
+		RejoinServer()
 	end
 })
 
---대충 그 뭐냐 스크 허브 탭
+--------------------------------------------------------------------------------
+-- 3. 비주얼 탭
+--------------------------------------------------------------------------------
+Visuals:Slider({
+	Title = "시간 조절",
+	Desc = "맵 시간대 변경",
+	Step = 0.5,
+	Value = { Min = 0, Max = 24, Default = 14 },
+	Callback = function(value)
+		Lighting.ClockTime = value
+	end
+})
 
+Visuals:Toggle({
+	Title = "Full Bright",
+	Desc = "어두운 맵 조명 제거",
+	Icon = "sun",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetFullbright(state)
+	end
+})
+
+Visuals:Toggle({
+	Title = "No Fog",
+	Desc = "맵 안개 제거",
+	Icon = "cloud-off",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetNoFog(state)
+	end
+})
+
+Visuals:Divider()
+
+Visuals:Slider({
+	Title = "FOV",
+	Desc = "카메라 시야각 조절",
+	Step = 1,
+	Value = { Min = 10, Max = 120, Default = 70 },
+	Callback = function(value)
+		SetFOV(value)
+	end
+})
+
+Visuals:Slider({
+	Title = "Gravity",
+	Desc = "맵 중력 조절",
+	Step = 1,
+	Value = { Min = 0, Max = 500, Default = DefaultGravity },
+	Callback = function(value)
+		workspace.Gravity = value
+	end
+})
+
+Visuals:Toggle({
+	Title = "무지개 오라",
+	Desc = "캐릭터 무지개 빛 효과",
+	Icon = "sparkle",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetRGBAura(state)
+	end
+})
+
+Visuals:Slider({
+	Title = "화면 블러",
+	Desc = "화면 흐림 효과 조절",
+	Step = 1,
+	Value = { Min = 0, Max = 30, Default = 0 },
+	Callback = function(value)
+		SetBlurSize(value)
+	end
+})
+
+--------------------------------------------------------------------------------
+-- 4. 플레이어 탭
+--------------------------------------------------------------------------------
+PlayerTab:Toggle({
+	Title = "시프트 락",
+	Desc = "시프트 락 강제 활성화",
+	Icon = "lock",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetShiftLock(state)
+	end
+})
+
+PlayerTab:Toggle({
+	Title = "벽 타기",
+	Desc = "W키 누르고 벽에 전진 시 등반",
+	Icon = "arrow-up-right",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetWallClimb(state)
+	end
+})
+
+PlayerTab:Button({
+	Title = "즉시 리셋",
+	Desc = "캐릭터 사망 및 리셋",
+	Locked = false,
+	Callback = function()
+		if Humanoid then Humanoid.Health = 0 end
+	end
+})
+
+--------------------------------------------------------------------------------
+-- 5. 스크립트 허브 탭
+--------------------------------------------------------------------------------
 Scripthub:Button({
 	Title = "눕눕 에임핵",
-	Desc = "유니버설 에임핵",
+	Desc = "유니버설 에임 스크립트",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/kkiim610107-cyber/NubNubaAimbot/refs/heads/main/NubNubAimbot.lua'))()
@@ -657,7 +1199,7 @@ Scripthub:Button({
 
 Scripthub:Button({
 	Title = "눕눕 블랙홀",
-	Desc = "대충 파트 끌어오는건데 자연재해가 가장 잘됨",
+	Desc = "오브젝트 끌어오기 스크립트",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet('https://raw.githubusercontent.com/kkiim610107-cyber/NubNubBlackhole/refs/heads/main/NubNubBlackhole.lua'))()
@@ -666,7 +1208,7 @@ Scripthub:Button({
 
 Scripthub:Button({
 	Title = "칼 올킬",
-	Desc = "클래식 칼만 됨",
+	Desc = "클래식 칼 전용 스크립트",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/Luk-Script/Kil-All/main/Kill-all.lua"))()
@@ -675,7 +1217,7 @@ Scripthub:Button({
 
 Scripthub:Button({
 	Title = "프리즌 라이프",
-	Desc = "그냥 좋은 허브임",
+	Desc = "프리즌 라이프 전용 스크립트",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/zenss555a/script/refs/heads/main/Prison-Life.lua", true))()
@@ -684,7 +1226,7 @@ Scripthub:Button({
 
 Scripthub:Button({
 	Title = "투명",
-	Desc = "투명 핵이긴한데 안되는거 좀잇음",
+	Desc = "투명화 스크립트",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet('https://pastebin.com/raw/3Rnd9rHf'))()
@@ -693,7 +1235,7 @@ Scripthub:Button({
 
 Scripthub:Button({
 	Title = "실행기 성능 테스트",
-	Desc = "Unc,Sunc 등등 테스트",
+	Desc = "실행기 성능 검사",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/GmilerlolYT/ExecutorTester/refs/heads/main/Hi"))()

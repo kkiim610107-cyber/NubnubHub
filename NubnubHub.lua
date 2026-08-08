@@ -700,7 +700,7 @@ local PlayerTab = Window:Tab({
 
 local DevTab = Window:Tab({
 	Title = "개발",
-	Icon = "code-2",
+	Icon = "code",
 	Locked = false,
 })
 

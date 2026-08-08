@@ -1195,8 +1195,8 @@ PlayerTab:Button({
 -- 5. 개발 탭 (Dev Tools)
 --------------------------------------------------------------------------------
 DevTab:Button({
-	Title = "Dark Dex Explorer",
-	Desc = "게임 맵 구조 및 인스턴스 탐색기",
+	Title = "Dex",
+	Desc = "맵 구조 보기",
 	Locked = false,
 	Callback = function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
@@ -1204,11 +1204,20 @@ DevTab:Button({
 })
 
 DevTab:Button({
-	Title = "RemoteSpy",
-	Desc = "리모트 이벤트 및 파라미터 추적기",
+	Title = "SimpleSpy",
+	Desc = "리모트 보는거",
 	Locked = false,
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/ex-serum/SimpleSpy/refs/heads/main/SimpleSpy.lua"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/SimpleSpyV3/main.lua"))()
+	end
+})
+
+DevTab:Button({
+	Title = "Cobalt",
+	Desc = "리모트 보는거 더 세부화됨",
+	Locked = false,
+	Callback = function()
+		loadstring(game:HttpGet("https://gitlab.com/upio/cobalt/-/releases/permalink/latest/downloads/Cobalt.luau"))()
 	end
 })
 

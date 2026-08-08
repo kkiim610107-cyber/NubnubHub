@@ -698,6 +698,12 @@ local PlayerTab = Window:Tab({
 	Locked = false,
 })
 
+local DevTab = Window:Tab({
+	Title = "개발",
+	Icon = "code-2",
+	Locked = false,
+})
+
 local Scripthub = Window:Tab({
 	Title = "스크립트 허브",
 	Icon = "scroll-text",
@@ -1186,7 +1192,28 @@ PlayerTab:Button({
 })
 
 --------------------------------------------------------------------------------
--- 5. 스크립트 허브 탭
+-- 5. 개발 탭 (Dev Tools)
+--------------------------------------------------------------------------------
+DevTab:Button({
+	Title = "Dark Dex Explorer",
+	Desc = "게임 맵 구조 및 인스턴스 탐색기",
+	Locked = false,
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+	end
+})
+
+DevTab:Button({
+	Title = "RemoteSpy",
+	Desc = "리모트 이벤트 및 파라미터 추적기",
+	Locked = false,
+	Callback = function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/ex-serum/SimpleSpy/refs/heads/main/SimpleSpy.lua"))()
+	end
+})
+
+--------------------------------------------------------------------------------
+-- 6. 스크립트 허브 탭
 --------------------------------------------------------------------------------
 Scripthub:Button({
 	Title = "눕눕 에임핵",

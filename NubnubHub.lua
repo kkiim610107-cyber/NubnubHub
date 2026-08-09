@@ -692,12 +692,6 @@ local Visuals = Window:Tab({
 	Locked = false,
 })
 
-local PlayerTab = Window:Tab({
-	Title = "플레이어",
-	Icon = "user-cog",
-	Locked = false,
-})
-
 local DevTab = Window:Tab({
 	Title = "개발",
 	Icon = "code",
@@ -713,7 +707,7 @@ local Scripthub = Window:Tab({
 Main:Select()
 
 --------------------------------------------------------------------------------
--- 1. 메인 탭 (서버 / 세션 / 빠른 실행)
+-- 1. 메인 탭 (인피니티 야드 / 이동 / 캐릭터 조작)
 --------------------------------------------------------------------------------
 Main:Button({
 	Title = "인피니티 야드",
@@ -727,51 +721,6 @@ Main:Button({
 Main:Divider()
 
 Main:Toggle({
-	Title = "Anti AFK",
-	Desc = "튕김 방지",
-	Icon = "shield-check",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetAntiAFK(state)
-	end
-})
-
-Main:Toggle({
-	Title = "FPS & Ping",
-	Desc = "화면 좌측 상단 성능 표시",
-	Icon = "activity",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		ToggleWatermark(state)
-	end
-})
-
-Main:Divider()
-
-Main:Button({
-	Title = "Server Hop",
-	Desc = "다른 무작위 서버로 이동",
-	Locked = false,
-	Callback = function()
-		ServerHop()
-	end
-})
-
-Main:Button({
-	Title = "Rejoin",
-	Desc = "현재 접속 중인 서버로 재접속",
-	Locked = false,
-	Callback = function()
-		RejoinServer()
-	end
-})
-
---------------------------------------------------------------------------------
--- 2. 플레이어 탭 (이동 / 캐릭터 조작)
---------------------------------------------------------------------------------
-PlayerTab:Toggle({
 	Title = "스피드",
 	Desc = "스피드 핵 활성화",
 	Icon = "sport-shoe",
@@ -783,7 +732,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Slider({
+Main:Slider({
 	Title = "스피드 값",
 	Desc = "스피드 값 조절",
 	Step = 1,
@@ -794,7 +743,7 @@ PlayerTab:Slider({
 	end
 })
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "점프 파워",
 	Desc = "점프 핵 활성화",
 	Icon = "footprints",
@@ -806,7 +755,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Slider({
+Main:Slider({
 	Title = "점프 파워 값",
 	Desc = "점프 파워 조절",
 	Step = 1,
@@ -817,7 +766,7 @@ PlayerTab:Slider({
 	end
 })
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "무한 점프",
 	Desc = "무한 연속 점프",
 	Icon = "arrow-up-circle",
@@ -828,7 +777,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "플라이",
 	Desc = "당연히 닉값대로 날라다니는 거죠",
 	Icon = "plane",
@@ -840,7 +789,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Slider({
+Main:Slider({
 	Title = "플라이 속도",
 	Desc = "플라이 속도 조절",
 	Step = 1,
@@ -850,7 +799,7 @@ PlayerTab:Slider({
 	end
 })
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "스핀",
 	Desc = "캐릭터 회전",
 	Icon = "rotate-cw",
@@ -861,7 +810,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Slider({
+Main:Slider({
 	Title = "스핀 속도",
 	Desc = "스핀 속도 조절",
 	Step = 1,
@@ -871,9 +820,9 @@ PlayerTab:Slider({
 	end
 })
 
-PlayerTab:Divider()
+Main:Divider()
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "시프트 락",
 	Desc = "시프트 락 강제 활성화",
 	Icon = "lock",
@@ -884,7 +833,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "벽 타기",
 	Desc = "대충 벽으로 가면 올려줌",
 	Icon = "arrow-up-right",
@@ -895,7 +844,7 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Toggle({
+Main:Toggle({
 	Title = "Noclip",
 	Desc = "벽 통과 기능",
 	Icon = "hat-glasses",
@@ -906,9 +855,9 @@ PlayerTab:Toggle({
 	end
 })
 
-PlayerTab:Divider()
+Main:Divider()
 
-PlayerTab:Button({
+Main:Button({
 	Title = "자살 하기",
 	Desc = "그냥 딸깍 재설정",
 	Locked = false,
@@ -918,7 +867,7 @@ PlayerTab:Button({
 })
 
 --------------------------------------------------------------------------------
--- 3. 비주얼 탭 (화면 / ESP / 조명)
+-- 2. 비주얼 탭 (화면 / ESP / 조명)
 --------------------------------------------------------------------------------
 Visuals:Toggle({
 	Title = "ESP",
@@ -1057,7 +1006,7 @@ Visuals:Slider({
 })
 
 --------------------------------------------------------------------------------
--- 4. 유틸리티 탭 (텔포 / 노클립 / 관전 / 아이템)
+-- 3. 유틸리티 탭 (텔포 / 노클립 / 관전 / 아이템 / 안티AFK / FPS&Ping / 서버홉)
 --------------------------------------------------------------------------------
 Utility:Input({
 	Title = "플레이어 텔레포트",
@@ -1189,8 +1138,50 @@ Utility:Button({
 	end
 })
 
+Utility:Divider()
+
+Utility:Toggle({
+	Title = "Anti AFK",
+	Desc = "튕김 방지",
+	Icon = "shield-check",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetAntiAFK(state)
+	end
+})
+
+Utility:Toggle({
+	Title = "FPS & Ping",
+	Desc = "화면 좌측 상단 성능 표시",
+	Icon = "activity",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		ToggleWatermark(state)
+	end
+})
+
+Utility:Button({
+	Title = "Server Hop",
+	Desc = "다른 무작위 서버로 이동",
+	Locked = false,
+	Callback = function()
+		ServerHop()
+	end
+})
+
+Utility:Button({
+	Title = "Rejoin",
+	Desc = "현재 접속 중인 서버로 재접속",
+	Locked = false,
+	Callback = function()
+		RejoinServer()
+	end
+})
+
 --------------------------------------------------------------------------------
--- 5. 개발 탭 (Dev Tools)
+-- 4. 개발 탭 (Dev Tools)
 --------------------------------------------------------------------------------
 DevTab:Button({
 	Title = "Dex",
@@ -1220,7 +1211,7 @@ DevTab:Button({
 })
 
 --------------------------------------------------------------------------------
--- 6. 스크립트 허브 탭
+-- 5. 스크립트 허브 탭
 --------------------------------------------------------------------------------
 Scripthub:Button({
 	Title = "눕눕 에임핵",

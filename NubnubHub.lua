@@ -713,7 +713,7 @@ local Scripthub = Window:Tab({
 Main:Select()
 
 --------------------------------------------------------------------------------
--- 1. 메인 탭
+-- 1. 메인 탭 (서버 / 세션 / 빠른 실행)
 --------------------------------------------------------------------------------
 Main:Button({
 	Title = "인피니티 야드",
@@ -726,8 +726,52 @@ Main:Button({
 
 Main:Divider()
 
--- 이동 기능
 Main:Toggle({
+	Title = "Anti AFK",
+	Desc = "튕김 방지",
+	Icon = "shield-check",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetAntiAFK(state)
+	end
+})
+
+Main:Toggle({
+	Title = "FPS & Ping",
+	Desc = "화면 좌측 상단 성능 표시",
+	Icon = "activity",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		ToggleWatermark(state)
+	end
+})
+
+Main:Divider()
+
+Main:Button({
+	Title = "Server Hop",
+	Desc = "다른 무작위 서버로 이동",
+	Locked = false,
+	Callback = function()
+		ServerHop()
+	end
+})
+
+Main:Button({
+	Title = "Rejoin",
+	Desc = "현재 접속 중인 서버로 재접속",
+	Locked = false,
+	Callback = function()
+		RejoinServer()
+	end
+})
+
+--------------------------------------------------------------------------------
+-- 2. 플레이어 탭 (이동 / 캐릭터 조작)
+--------------------------------------------------------------------------------
+PlayerTab:Toggle({
 	Title = "스피드",
 	Desc = "스피드 핵 활성화",
 	Icon = "sport-shoe",
@@ -739,7 +783,7 @@ Main:Toggle({
 	end
 })
 
-Main:Slider({
+PlayerTab:Slider({
 	Title = "스피드 값",
 	Desc = "스피드 값 조절",
 	Step = 1,
@@ -750,7 +794,7 @@ Main:Slider({
 	end
 })
 
-Main:Toggle({
+PlayerTab:Toggle({
 	Title = "점프 파워",
 	Desc = "점프 핵 활성화",
 	Icon = "footprints",
@@ -762,7 +806,7 @@ Main:Toggle({
 	end
 })
 
-Main:Slider({
+PlayerTab:Slider({
 	Title = "점프 파워 값",
 	Desc = "점프 파워 조절",
 	Step = 1,
@@ -773,7 +817,7 @@ Main:Slider({
 	end
 })
 
-Main:Toggle({
+PlayerTab:Toggle({
 	Title = "무한 점프",
 	Desc = "무한 연속 점프",
 	Icon = "arrow-up-circle",
@@ -784,7 +828,7 @@ Main:Toggle({
 	end
 })
 
-Main:Toggle({
+PlayerTab:Toggle({
 	Title = "플라이",
 	Desc = "당연히 닉값대로 날라다니는 거죠",
 	Icon = "plane",
@@ -796,7 +840,7 @@ Main:Toggle({
 	end
 })
 
-Main:Slider({
+PlayerTab:Slider({
 	Title = "플라이 속도",
 	Desc = "플라이 속도 조절",
 	Step = 1,
@@ -806,7 +850,7 @@ Main:Slider({
 	end
 })
 
-Main:Toggle({
+PlayerTab:Toggle({
 	Title = "스핀",
 	Desc = "캐릭터 회전",
 	Icon = "rotate-cw",
@@ -817,7 +861,7 @@ Main:Toggle({
 	end
 })
 
-Main:Slider({
+PlayerTab:Slider({
 	Title = "스핀 속도",
 	Desc = "스핀 속도 조절",
 	Step = 1,
@@ -827,10 +871,56 @@ Main:Slider({
 	end
 })
 
-Main:Divider()
+PlayerTab:Divider()
 
--- ESP 기능
-Main:Toggle({
+PlayerTab:Toggle({
+	Title = "시프트 락",
+	Desc = "시프트 락 강제 활성화",
+	Icon = "lock",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetShiftLock(state)
+	end
+})
+
+PlayerTab:Toggle({
+	Title = "벽 타기",
+	Desc = "대충 벽으로 가면 올려줌",
+	Icon = "arrow-up-right",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetWallClimb(state)
+	end
+})
+
+PlayerTab:Toggle({
+	Title = "Noclip",
+	Desc = "벽 통과 기능",
+	Icon = "hat-glasses",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetNoclip(state)
+	end
+})
+
+PlayerTab:Divider()
+
+PlayerTab:Button({
+	Title = "자살 하기",
+	Desc = "그냥 딸깍 재설정",
+	Locked = false,
+	Callback = function()
+		if Humanoid then Humanoid.Health = 0 end
+	end
+})
+
+--------------------------------------------------------------------------------
+-- 3. 비주얼 탭 (화면 / ESP / 조명)
+--------------------------------------------------------------------------------
+Visuals:Toggle({
 	Title = "ESP",
 	Desc = "플레이어 외곽선 하이라이트",
 	Icon = "spotlight",
@@ -842,7 +932,7 @@ Main:Toggle({
 	end
 })
 
-Main:Toggle({
+Visuals:Toggle({
 	Title = "Name ESP",
 	Desc = "머리 위 플레이어 이름 표시",
 	Icon = "type",
@@ -854,7 +944,7 @@ Main:Toggle({
 	end
 })
 
-Main:Toggle({
+Visuals:Toggle({
 	Title = "Team Color ESP",
 	Desc = "팀 색상으로 ESP 표시",
 	Icon = "users",
@@ -866,7 +956,7 @@ Main:Toggle({
 	end
 })
 
-Main:Colorpicker({
+Visuals:Colorpicker({
 	Title = "ESP Color",
 	Desc = "기본 색상 설정",
 	Default = Color3.fromRGB(255, 255, 255),
@@ -878,7 +968,7 @@ Main:Colorpicker({
 	end
 })
 
-Main:Slider({
+Visuals:Slider({
 	Title = "ESP Transparency",
 	Desc = "ESP 배경 투명도 조절",
 	Step = 0.1,
@@ -889,10 +979,86 @@ Main:Slider({
 	end
 })
 
+Visuals:Divider()
+
+Visuals:Toggle({
+	Title = "Full Bright",
+	Desc = "화면 밝게 하기",
+	Icon = "sun",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetFullbright(state)
+	end
+})
+
+Visuals:Toggle({
+	Title = "No Fog",
+	Desc = "맵 안개 제거",
+	Icon = "cloud-off",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetNoFog(state)
+	end
+})
+
+Visuals:Toggle({
+	Title = "본인 무지개",
+	Desc = "캐릭터 무지개 빛 효과",
+	Icon = "sparkle",
+	Type = "Checkbox",
+	Value = false,
+	Callback = function(state)
+		SetRGBAura(state)
+	end
+})
+
+Visuals:Divider()
+
+Visuals:Slider({
+	Title = "시간 조절",
+	Desc = "맵 시간대 변경",
+	Step = 0.5,
+	Value = { Min = 0, Max = 24, Default = 14 },
+	Callback = function(value)
+		Lighting.ClockTime = value
+	end
+})
+
+Visuals:Slider({
+	Title = "FOV",
+	Desc = "카메라 시야각 조절",
+	Step = 1,
+	Value = { Min = 10, Max = 120, Default = 70 },
+	Callback = function(value)
+		SetFOV(value)
+	end
+})
+
+Visuals:Slider({
+	Title = "화면 블러",
+	Desc = "화면 블러 효과 조절",
+	Step = 1,
+	Value = { Min = 0, Max = 30, Default = 0 },
+	Callback = function(value)
+		SetBlurSize(value)
+	end
+})
+
+Visuals:Slider({
+	Title = "Gravity",
+	Desc = "맵 중력 조절",
+	Step = 1,
+	Value = { Min = 0, Max = 500, Default = DefaultGravity },
+	Callback = function(value)
+		workspace.Gravity = value
+	end
+})
+
 --------------------------------------------------------------------------------
--- 2. 유틸리티 탭
+-- 4. 유틸리티 탭 (텔포 / 노클립 / 관전 / 아이템)
 --------------------------------------------------------------------------------
--- Teleport Section
 Utility:Input({
 	Title = "플레이어 텔레포트",
 	Desc = "닉네임 입력 후 엔터 시 텔포",
@@ -940,7 +1106,6 @@ Utility:Toggle({
 	end
 })
 
--- 위치 저장 및 순간이동
 Utility:Button({
 	Title = "위치 저장",
 	Desc = "현재 좌표 저장",
@@ -959,18 +1124,8 @@ Utility:Button({
 	end
 })
 
-Utility:Toggle({
-	Title = "Noclip",
-	Desc = "벽 통과 기능",
-	Icon = "hat-glasses",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetNoclip(state)
-	end
-})
+Utility:Divider()
 
--- 파트 부수기
 Utility:Button({
 	Title = "파트 부수기",
 	Desc = "클라이언트",
@@ -980,7 +1135,6 @@ Utility:Button({
 	end
 })
 
--- Auto Pick Up (버튼 클릭 시 일괄 줍기)
 Utility:Button({
 	Title = "Item Pick Up",
 	Desc = "워크스페이스 내 아이템 일괄 줍기",
@@ -992,7 +1146,6 @@ Utility:Button({
 
 Utility:Divider()
 
--- Spectate Section
 local spectateSearchPlayer = nil
 
 Utility:Input({
@@ -1033,161 +1186,6 @@ Utility:Button({
 	Locked = false,
 	Callback = function()
 		SpectatePlayer(nil)
-	end
-})
-
-Utility:Divider()
-
--- Server & Performance Section
-Utility:Toggle({
-	Title = "Anti AFK",
-	Desc = "튕김 방지",
-	Icon = "shield-check",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetAntiAFK(state)
-	end
-})
-
-Utility:Toggle({
-	Title = "FPS & Ping",
-	Desc = "화면 좌측 상단 성능 표시",
-	Icon = "activity",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		ToggleWatermark(state)
-	end
-})
-
-Utility:Button({
-	Title = "Server Hop",
-	Desc = "다른 무작위 서버로 이동",
-	Locked = false,
-	Callback = function()
-		ServerHop()
-	end
-})
-
-Utility:Button({
-	Title = "Rejoin",
-	Desc = "현재 접속 중인 서버로 재접속",
-	Locked = false,
-	Callback = function()
-		RejoinServer()
-	end
-})
-
---------------------------------------------------------------------------------
--- 3. 비주얼 탭
---------------------------------------------------------------------------------
-Visuals:Slider({
-	Title = "시간 조절",
-	Desc = "맵 시간대 변경",
-	Step = 0.5,
-	Value = { Min = 0, Max = 24, Default = 14 },
-	Callback = function(value)
-		Lighting.ClockTime = value
-	end
-})
-
-Visuals:Toggle({
-	Title = "Full Bright",
-	Desc = "화면 밝게 하기",
-	Icon = "sun",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetFullbright(state)
-	end
-})
-
-Visuals:Toggle({
-	Title = "No Fog",
-	Desc = "맵 안개 제거",
-	Icon = "cloud-off",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetNoFog(state)
-	end
-})
-
-Visuals:Divider()
-
-Visuals:Slider({
-	Title = "FOV",
-	Desc = "카메라 시야각 조절",
-	Step = 1,
-	Value = { Min = 10, Max = 120, Default = 70 },
-	Callback = function(value)
-		SetFOV(value)
-	end
-})
-
-Visuals:Slider({
-	Title = "Gravity",
-	Desc = "맵 중력 조절",
-	Step = 1,
-	Value = { Min = 0, Max = 500, Default = DefaultGravity },
-	Callback = function(value)
-		workspace.Gravity = value
-	end
-})
-
-Visuals:Toggle({
-	Title = "본인 무지개",
-	Desc = "캐릭터 무지개 빛 효과",
-	Icon = "sparkle",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetRGBAura(state)
-	end
-})
-
-Visuals:Slider({
-	Title = "화면 블러",
-	Desc = "화면 블러 효과 조절",
-	Step = 1,
-	Value = { Min = 0, Max = 30, Default = 0 },
-	Callback = function(value)
-		SetBlurSize(value)
-	end
-})
-
---------------------------------------------------------------------------------
--- 4. 플레이어 탭
---------------------------------------------------------------------------------
-PlayerTab:Toggle({
-	Title = "시프트 락",
-	Desc = "시프트 락 강제 활성화",
-	Icon = "lock",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetShiftLock(state)
-	end
-})
-
-PlayerTab:Toggle({
-	Title = "벽 타기",
-	Desc = "대충 벽으로 가면 올려줌",
-	Icon = "arrow-up-right",
-	Type = "Checkbox",
-	Value = false,
-	Callback = function(state)
-		SetWallClimb(state)
-	end
-})
-
-PlayerTab:Button({
-	Title = "자살 하기",
-	Desc = "그냥 딸깍 재설정",
-	Locked = false,
-	Callback = function()
-		if Humanoid then Humanoid.Health = 0 end
 	end
 })
 

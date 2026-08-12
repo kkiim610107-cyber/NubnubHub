@@ -1241,13 +1241,15 @@ Scripthub:Button({
 })
 
 Scripthub:Button({
-	Title = "프리즌 라이프",
-	Desc = "프리즌 라이프 전용 스크립트",
+	Title = "동굴부대",
+	Desc = "무한 총알이랑 히트박스",
 	Locked = false,
 	Callback = function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/zenss555a/script/refs/heads/main/Prison-Life.lua", true))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/kkiim610107-cyber/donggulbude/refs/heads/main/donggulbude.lua", true))()
 	end
 })
+
+Scripthub:Divider()
 
 Scripthub:Button({
 	Title = "투명",
